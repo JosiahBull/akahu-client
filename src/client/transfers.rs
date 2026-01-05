@@ -2,9 +2,25 @@
 //!
 //! This module contains methods for managing transfers between user accounts.
 
+use crate::{TransferId, UserToken};
+
 use super::AkahuClient;
 use reqwest::{Method, header::HeaderValue};
 use std::collections::HashMap;
+
+// TODO: These should be replaced with function parameters using bon builders
+#[derive(serde::Serialize)]
+struct TransferQueryParams {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start: Option<chrono::DateTime<chrono::Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub end: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+#[derive(serde::Serialize)]
+struct TransferCreateParams {
+    // Placeholder - fields need to be added based on API requirements
+}
 
 impl AkahuClient {
     // ==================== Transfers Endpoints ====================
@@ -34,8 +50,8 @@ impl AkahuClient {
     /// [<https://developers.akahu.nz/reference/get_transfers>]
     pub async fn get_transfers(
         &self,
-        user_token: &str,
-        query: Option<crate::models::TransferQueryParams>,
+        user_token: &UserToken,
+        query: Option<TransferQueryParams>,
     ) -> crate::error::AkahuResult<Vec<crate::models::Transfer>> {
         const URI: &str = "transfers";
 
@@ -107,8 +123,8 @@ impl AkahuClient {
     /// [<https://developers.akahu.nz/reference/post_transfers>]
     pub async fn create_transfer(
         &self,
-        user_token: &str,
-        params: crate::models::TransferCreateParams,
+        user_token: &UserToken,
+        params: TransferCreateParams,
     ) -> crate::error::AkahuResult<crate::models::Transfer> {
         const URI: &str = "transfers";
 
@@ -148,10 +164,10 @@ impl AkahuClient {
     /// [<https://developers.akahu.nz/reference/get_transfers-id>]
     pub async fn get_transfer(
         &self,
-        user_token: &str,
-        transfer_id: &str,
+        user_token: &UserToken,
+        transfer_id: &TransferId,
     ) -> crate::error::AkahuResult<crate::models::Transfer> {
-        let uri = format!("transfers/{}", transfer_id);
+        let uri = format!("transfers/{}", transfer_id.as_str());
 
         let headers = self.build_user_headers(user_token)?;
 

@@ -2,6 +2,8 @@
 //!
 //! This module contains methods for interacting with financial institution connections.
 
+use crate::ConnectionId;
+
 use super::AkahuClient;
 use reqwest::Method;
 
@@ -20,10 +22,13 @@ impl AkahuClient {
     ///
     /// # Returns
     ///
-    /// A vector of all available financial institution connections.
+    /// A response containing all available financial institution connections.
+    /// Access the connections via the `.items` field.
     ///
     /// [<https://developers.akahu.nz/reference/get_connections>]
-    pub async fn get_connections(&self) -> crate::error::AkahuResult<Vec<crate::models::Connection>> {
+    pub async fn get_connections(
+        &self,
+    ) -> crate::error::AkahuResult<crate::models::ListResponse<crate::models::Connection>> {
         const URI: &str = "connections";
 
         let headers = self.build_app_headers()?;
@@ -52,14 +57,15 @@ impl AkahuClient {
     ///
     /// # Returns
     ///
-    /// The connection details.
+    /// A response containing the connection details.
+    /// Access the connection via the `.item` field.
     ///
     /// [<https://developers.akahu.nz/reference/get_connections-id>]
     pub async fn get_connection(
         &self,
-        connection_id: &str,
-    ) -> crate::error::AkahuResult<crate::models::Connection> {
-        let uri = format!("connections/{}", connection_id);
+        connection_id: &ConnectionId,
+    ) -> crate::error::AkahuResult<crate::models::ItemResponse<crate::models::Connection>> {
+        let uri = format!("connections/{}", connection_id.as_str());
 
         let headers = self.build_app_headers()?;
 

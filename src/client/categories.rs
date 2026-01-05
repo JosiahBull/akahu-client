@@ -2,6 +2,8 @@
 //!
 //! This module contains methods for retrieving NZFCC (New Zealand Financial Category Codes) categories.
 
+use crate::CategoryId;
+
 use super::AkahuClient;
 use reqwest::Method;
 
@@ -17,10 +19,13 @@ impl AkahuClient {
     ///
     /// # Returns
     ///
-    /// A vector of all available NZFCC categories.
+    /// A response containing all available NZFCC categories.
+    /// Access the categories via the `.items` field.
     ///
     /// [<https://developers.akahu.nz/reference/get_categories>]
-    pub async fn get_categories(&self) -> crate::error::AkahuResult<Vec<crate::models::Category>> {
+    pub async fn get_categories(
+        &self,
+    ) -> crate::error::AkahuResult<crate::models::ListResponse<crate::models::Category>> {
         const URI: &str = "categories";
 
         let headers = self.build_app_headers()?;
@@ -49,14 +54,15 @@ impl AkahuClient {
     ///
     /// # Returns
     ///
-    /// The category details.
+    /// A response containing the category details.
+    /// Access the category via the `.item` field.
     ///
     /// [<https://developers.akahu.nz/reference/get_categories-id>]
     pub async fn get_category(
         &self,
-        category_id: &str,
-    ) -> crate::error::AkahuResult<crate::models::Category> {
-        let uri = format!("categories/{}", category_id);
+        category_id: &CategoryId,
+    ) -> crate::error::AkahuResult<crate::models::ItemResponse<crate::models::Category>> {
+        let uri = format!("categories/{}", category_id.as_str());
 
         let headers = self.build_app_headers()?;
 

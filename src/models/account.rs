@@ -2,6 +2,10 @@
 //! for the Akahu model this is derived from is
 //! [here](https://developers.akahu.nz/docs/the-account-model).
 
+use serde::{Deserialize, Serialize};
+
+use crate::{AccountId, AuthorizationId, BankAccountNumber};
+
 /// An Akahu account is something that has a balance. Some connections (like
 /// banks) have lots of accounts, while others (like KiwiSaver providers) may
 /// only have one. Different types of accounts have different attributes and
@@ -12,7 +16,7 @@
 /// Keep in mind that we limit what information is available depending on your
 /// app permissions. This is done in order to protect user privacy, however it
 /// also means that some of the data here may not be visible to you.
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct Account {
     /// The `id` key is a unique identifier for the account in the Akahu system.
     ///
@@ -21,7 +25,7 @@ pub struct Account {
     ///
     /// [<https://developers.akahu.nz/docs/the-account-model#_id>]
     #[serde(rename = "_id")]
-    pub id: String,
+    pub id: AccountId,
 
     /// The identifier of this account's predecessor.
     ///
@@ -32,8 +36,8 @@ pub struct Account {
     /// [here](https://developers.akahu.nz/docs/official-open-banking).
     ///
     /// [<https://developers.akahu.nz/docs/the-account-model#_migrated>]
-    #[serde(rename = "_migrated")]
-    pub migrated: String,
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "_migrated")]
+    pub migrated: Option<String>,
 
     /// Financial accounts are connected to Akahu via an authorisation with the
     /// user's financial institution. Multiple accounts can be connected during
@@ -54,7 +58,7 @@ pub struct Account {
     ///
     /// [<https://developers.akahu.nz/docs/the-account-model#_authorisation>]
     #[serde(rename = "_authorisation")]
-    pub authorisation: String,
+    pub authorisation: AuthorizationId,
 
     /// Deprecated: Please use `authorisation` instead.
     ///
@@ -65,7 +69,7 @@ pub struct Account {
         default,
         skip_serializing_if = "Option::is_none"
     )]
-    pub credentials: Option<String>,
+    pub credentials: Option<AuthorizationId>,
 
     /// This is the name of the account. If the connection allows customisation,
     /// the name will be the custom name (or nickname), e.g. "Spending Account".
@@ -94,6 +98,7 @@ pub struct Account {
     /// ****-****-****-1234
     ///
     /// [<https://developers.akahu.nz/docs/the-account-model#formatted_account>]
+    // TODO: could hyave a strongly defined type here.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub formatted_acount: Option<String>,
 
@@ -137,7 +142,7 @@ pub struct Account {
 /// cases can cause our long-lived access to be revoked.
 ///
 /// [<https://developers.akahu.nz/docs/the-account-model#status>]
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum Active {
     /// Akahu can authenticate with the institution to retrieve data
@@ -165,7 +170,7 @@ pub enum Active {
 /// poorly specified. Treat all fields in the meta object as optional.
 ///
 /// [<https://developers.akahu.nz/docs/the-account-model#meta>]
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct AccountMetadata {
     /// The account holder name as exposed by the provider. In the case of bank
     /// accounts this is the name on the bank statement.
@@ -202,12 +207,12 @@ pub struct AccountMetadata {
 }
 
 /// Details for making a payment to an account that is not a bank account.
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct PaymentDetails {
     /// The recipient's name.
     pub account_holder: String,
     /// The recipient's NZ bank account number.
-    pub account_number: String,
+    pub account_number: BankAccountNumber,
     /// Details required to be in the payment particulars.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub particulars: Option<String>,
@@ -219,12 +224,16 @@ pub struct PaymentDetails {
     pub reference: Option<String>,
     /// If there is a minimum amount in order to have the payment accepted, in
     /// dollars.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub minimum_amount: Option<f64>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "rust_decimal::serde::arbitrary_precision_option"
+    )]
+    pub minimum_amount: Option<rust_decimal::Decimal>,
 }
 
 /// Detailed information related to a loan account.
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct LoanDetails {
     /// The purpose of the loan (E.g. HOME), if we can't determine the purpose,
     /// this will be UNKNOWN.
@@ -264,7 +273,7 @@ pub struct LoanDetails {
 }
 
 /// Interest rate information for a loan.
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct InterestDetails {
     /// The rate of interest.
     #[serde(with = "rust_decimal::serde::arbitrary_precision")]
@@ -278,7 +287,7 @@ pub struct InterestDetails {
 }
 
 /// Loan repayment information.
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct RepaymentDetails {
     /// The frequency of the loan repayment (E.g. MONTHLY).
     pub frequency: String,
@@ -297,18 +306,24 @@ pub struct RepaymentDetails {
 /// account (balance/metadata/transactions) is up to date as of $TIME".
 ///
 /// [<https://developers.akahu.nz/docs/the-account-model#refreshed>]
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct RefreshDetails {
     /// When the balance was last updated.
-    pub balance: chrono::DateTime<chrono::Utc>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub balance: Option<chrono::DateTime<chrono::Utc>>,
+
     /// When other account metadata was last updated (any account property apart
     /// from balance).
-    pub meta: chrono::DateTime<chrono::Utc>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub meta: Option<chrono::DateTime<chrono::Utc>>,
+
     /// When we last checked for and processed any new transactions.
     ///
     /// This flag may be missing when an account has first connected, as it
     /// takes a few seconds for new transactions to be processed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transactions: Option<chrono::DateTime<chrono::Utc>>,
+
     /// When we last fetched identity data about the
     /// [party](https://developers.akahu.nz/docs/enduring-identity-verification#party-data)
     /// who has authenticated with the financial institution when connecting
@@ -317,13 +332,14 @@ pub struct RefreshDetails {
     /// This data is updated by Akahu on a fixed 30 day interval, regardless of
     /// your app's [data
     /// refresh](https://developers.akahu.nz/docs/data-refreshes) configuration.
-    pub party: chrono::DateTime<chrono::Utc>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub party: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 /// The account balance.
 ///
 /// [<https://developers.akahu.nz/docs/the-account-model#balance>]
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct BalanceDetails {
     /// The current account balance.
     ///
@@ -335,7 +351,11 @@ pub struct BalanceDetails {
     pub current: rust_decimal::Decimal,
 
     /// The balance that is currently available to the account holder.
-    #[serde(with = "rust_decimal::serde::arbitrary_precision_option")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "rust_decimal::serde::arbitrary_precision_option"
+    )]
     pub available: Option<rust_decimal::Decimal>,
 
     /// The credit limit for this account.
@@ -343,10 +363,15 @@ pub struct BalanceDetails {
     /// For example a credit card limit or an overdraft limit. This value is
     /// only present when provided directly by the connected financial
     /// institution.
-    #[serde(with = "rust_decimal::serde::arbitrary_precision_option")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "rust_decimal::serde::arbitrary_precision_option"
+    )]
     pub limit: Option<rust_decimal::Decimal>,
 
     /// A boolean indicating whether this account is in overdraft.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub overdrawn: Option<bool>,
 
     /// The [3 letter ISO 4217 currency code](https://www.xe.com/iso4217.php)
@@ -358,7 +383,7 @@ pub struct BalanceDetails {
 /// and falls back to more general types for other types of connection.
 ///
 /// [<https://developers.akahu.nz/docs/the-account-model#type>]
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum BankAccountKind {
     /// An everyday spending account.
@@ -394,8 +419,8 @@ pub enum BankAccountKind {
 /// The list of attributes indicates what abilities an account has.
 ///
 /// [<https://developers.akahu.nz/docs/the-account-model#attributes>]
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq)]
-#[serde(rename_all = "UPPERCASE")]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Attribute {
     /// Akahu can fetch available transactions from this account.
     Transactions,

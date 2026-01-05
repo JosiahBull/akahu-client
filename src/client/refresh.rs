@@ -2,6 +2,8 @@
 //!
 //! This module contains methods for refreshing account data.
 
+use crate::{AccountId, UserToken};
+
 use super::AkahuClient;
 use reqwest::Method;
 
@@ -25,7 +27,10 @@ impl AkahuClient {
     /// Returns `Ok(())` on successful refresh initiation.
     ///
     /// [<https://developers.akahu.nz/reference/post_refresh>]
-    pub async fn refresh_all_accounts(&self, user_token: &str) -> crate::error::AkahuResult<()> {
+    pub async fn refresh_all_accounts(
+        &self,
+        user_token: &UserToken,
+    ) -> crate::error::AkahuResult<()> {
         const URI: &str = "refresh";
 
         let headers = self.build_user_headers(user_token)?;
@@ -71,7 +76,7 @@ impl AkahuClient {
     /// [<https://developers.akahu.nz/reference/post_refresh-id>]
     pub async fn refresh_account_or_connection(
         &self,
-        user_token: &str,
+        user_token: &UserToken,
         id: &str,
     ) -> crate::error::AkahuResult<()> {
         let uri = format!("refresh/{}", id);

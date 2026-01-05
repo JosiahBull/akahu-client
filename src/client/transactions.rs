@@ -2,9 +2,26 @@
 //!
 //! This module contains methods for retrieving settled and pending transactions.
 
+use crate::{AccountId, Transaction, TransactionCursor, TransactionQueryParams, PendingTransaction, UserToken};
+
 use super::AkahuClient;
 use reqwest::Method;
 use std::collections::HashMap;
+
+// TODO: Paginated responses should potentially be generic wrappers
+#[derive(serde::Deserialize)]
+pub struct PaginatedTransactionResponse {
+    pub success: bool,
+    pub items: Vec<Transaction>,
+    pub cursor: TransactionCursor,
+}
+
+#[derive(serde::Deserialize)]
+pub struct PaginatedPendingTransactionResponse {
+    pub success: bool,
+    pub items: Vec<PendingTransaction>,
+    pub cursor: TransactionCursor,
+}
 
 impl AkahuClient {
     // ==================== Transaction Endpoints ====================
@@ -34,37 +51,12 @@ impl AkahuClient {
     ///
     /// A paginated response containing transactions and a cursor for fetching more pages.
     ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # use akahu_client::{AkahuClient, TransactionQueryParams};
-    /// # async fn example(client: AkahuClient, user_token: &str) {
-    /// // Get first page of transactions
-    /// let query = TransactionQueryParams {
-    ///     start: Some(chrono::Utc::now() - chrono::Duration::days(30)),
-    ///     end: Some(chrono::Utc::now()),
-    ///     cursor: None,
-    /// };
-    /// let response = client.get_transactions(user_token, Some(query)).await;
-    ///
-    /// // Get next page using cursor
-    /// if let Some(next_cursor) = response.cursor.next {
-    ///     let next_query = TransactionQueryParams {
-    ///         start: Some(chrono::Utc::now() - chrono::Duration::days(30)),
-    ///         end: Some(chrono::Utc::now()),
-    ///         cursor: Some(next_cursor),
-    ///     };
-    ///     let next_page = client.get_transactions(user_token, Some(next_query)).await;
-    /// }
-    /// # }
-    /// ```
-    ///
     /// [<https://developers.akahu.nz/reference/get_transactions>]
     pub async fn get_transactions(
         &self,
-        user_token: &str,
-        query: Option<crate::models::TransactionQueryParams>,
-    ) -> crate::error::AkahuResult<crate::models::PaginatedTransactionResponse> {
+        user_token: &UserToken,
+        query: Option<TransactionQueryParams>,
+    ) -> crate::error::AkahuResult<PaginatedTransactionResponse> {
         const URI: &str = "transactions";
 
         let headers = self.build_user_headers(user_token)?;
@@ -87,7 +79,7 @@ impl AkahuClient {
             }
 
             if let Some(cursor) = params.cursor {
-                query_params.insert("cursor", cursor);
+                query_params.insert("cursor", cursor.to_string());
             }
 
             let url = format!("{}/{}", self.base_url, URI);
@@ -129,27 +121,12 @@ impl AkahuClient {
     ///
     /// A paginated response containing pending transactions and a cursor for fetching more pages.
     ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # use akahu_client::AkahuClient;
-    /// # async fn example(client: AkahuClient, user_token: &str) {
-    /// // Get first page of pending transactions
-    /// let response = client.get_pending_transactions(user_token, None).await;
-    ///
-    /// // Get next page using cursor
-    /// if let Some(next_cursor) = response.cursor.next {
-    ///     let next_page = client.get_pending_transactions(user_token, Some(next_cursor)).await;
-    /// }
-    /// # }
-    /// ```
-    ///
     /// [<https://developers.akahu.nz/reference/get_transactions-pending>]
     pub async fn get_pending_transactions(
         &self,
-        user_token: &str,
+        user_token: &UserToken,
         cursor: Option<String>,
-    ) -> crate::error::AkahuResult<crate::models::PaginatedPendingTransactionResponse> {
+    ) -> crate::error::AkahuResult<PaginatedPendingTransactionResponse> {
         const URI: &str = "transactions/pending";
 
         let headers = self.build_user_headers(user_token)?;
@@ -197,47 +174,14 @@ impl AkahuClient {
     ///
     /// A paginated response containing transactions and a cursor for fetching more pages.
     ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # use akahu_client::{AkahuClient, TransactionQueryParams};
-    /// # async fn example(client: AkahuClient, user_token: &str) {
-    /// // Get first page of transactions for a specific account
-    /// let query = TransactionQueryParams {
-    ///     start: Some(chrono::Utc::now() - chrono::Duration::days(30)),
-    ///     end: Some(chrono::Utc::now()),
-    ///     cursor: None,
-    /// };
-    /// let response = client.get_account_transactions(
-    ///     user_token,
-    ///     "acc_123456",
-    ///     Some(query)
-    /// ).await;
-    ///
-    /// // Get next page using cursor
-    /// if let Some(next_cursor) = response.cursor.next {
-    ///     let next_query = TransactionQueryParams {
-    ///         start: Some(chrono::Utc::now() - chrono::Duration::days(30)),
-    ///         end: Some(chrono::Utc::now()),
-    ///         cursor: Some(next_cursor),
-    ///     };
-    ///     let next_page = client.get_account_transactions(
-    ///         user_token,
-    ///         "acc_123456",
-    ///         Some(next_query)
-    ///     ).await;
-    /// }
-    /// # }
-    /// ```
-    ///
     /// [<https://developers.akahu.nz/reference/get_accounts-id-transactions>]
     pub async fn get_account_transactions(
         &self,
-        user_token: &str,
-        account_id: &str,
-        query: Option<crate::models::TransactionQueryParams>,
-    ) -> crate::error::AkahuResult<crate::models::PaginatedTransactionResponse> {
-        let uri = format!("accounts/{}/transactions", account_id);
+        user_token: &UserToken,
+        account_id: &AccountId,
+        query: Option<TransactionQueryParams>,
+    ) -> crate::error::AkahuResult<PaginatedTransactionResponse> {
+        let uri = format!("accounts/{}/transactions", account_id.as_str());
 
         let headers = self.build_user_headers(user_token)?;
 
@@ -259,7 +203,7 @@ impl AkahuClient {
             }
 
             if let Some(cursor) = params.cursor {
-                query_params.insert("cursor", cursor);
+                query_params.insert("cursor", cursor.to_string());
             }
 
             let url = format!("{}/{}", self.base_url, uri);
@@ -302,37 +246,14 @@ impl AkahuClient {
     ///
     /// A paginated response containing pending transactions and a cursor for fetching more pages.
     ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # use akahu_client::AkahuClient;
-    /// # async fn example(client: AkahuClient, user_token: &str) {
-    /// // Get first page of pending transactions for a specific account
-    /// let response = client.get_account_pending_transactions(
-    ///     user_token,
-    ///     "acc_123456",
-    ///     None
-    /// ).await;
-    ///
-    /// // Get next page using cursor
-    /// if let Some(next_cursor) = response.cursor.next {
-    ///     let next_page = client.get_account_pending_transactions(
-    ///         user_token,
-    ///         "acc_123456",
-    ///         Some(next_cursor)
-    ///     ).await;
-    /// }
-    /// # }
-    /// ```
-    ///
     /// [<https://developers.akahu.nz/reference/get_accounts-id-transactions-pending>]
     pub async fn get_account_pending_transactions(
         &self,
-        user_token: &str,
-        account_id: &str,
+        user_token: &UserToken,
+        account_id: &AccountId,
         cursor: Option<String>,
-    ) -> crate::error::AkahuResult<crate::models::PaginatedPendingTransactionResponse> {
-        let uri = format!("accounts/{}/transactions/pending", account_id);
+    ) -> crate::error::AkahuResult<PaginatedPendingTransactionResponse> {
+        let uri = format!("accounts/{}/transactions/pending", account_id.as_str());
 
         let headers = self.build_user_headers(user_token)?;
 

@@ -2,6 +2,8 @@
 //!
 //! This module contains methods for OAuth2 authentication flows.
 
+use crate::{AuthCode, ClientSecret, ErrorResponse, RedirectUri, UserToken};
+
 use super::AkahuClient;
 use reqwest::Method;
 use reqwest::header::{HeaderMap, HeaderValue};
@@ -35,18 +37,18 @@ impl AkahuClient {
     /// [<https://developers.akahu.nz/reference/post_token>]
     pub async fn exchange_authorization_code(
         &self,
-        code: &str,
-        redirect_uri: &str,
-        client_secret: &str,
+        code: &AuthCode,
+        redirect_uri: &RedirectUri,
+        client_secret: &ClientSecret,
     ) -> crate::error::AkahuResult<crate::models::TokenExchangeResponse> {
         const URI: &str = "token";
 
         let request_body = crate::models::TokenExchangeRequest {
             grant_type: "authorization_code".to_string(),
-            code: code.to_string(),
-            redirect_uri: redirect_uri.to_string(),
+            code: code.clone(),
+            redirect_uri: redirect_uri.clone(),
             client_id: self.app_id_token.clone(),
-            client_secret: client_secret.to_string(),
+            client_secret: client_secret.clone(),
         };
 
         let mut headers = HeaderMap::new();
@@ -65,11 +67,11 @@ impl AkahuClient {
         if res.status().is_success() {
             Ok(res.json().await?)
         } else {
-            // OAuth errors use a different format
-            let error_response: crate::models::TokenErrorResponse = res.json().await?;
-            Err(crate::error::AkahuError::OAuth {
-                error: error_response.error,
-                error_description: error_response.error_description,
+            let status = res.status().as_u16();
+            let error_response: ErrorResponse = res.json().await?;
+            Err(crate::error::AkahuError::ApiError {
+                status,
+                message: error_response.message,
             })
         }
     }
@@ -93,13 +95,13 @@ impl AkahuClient {
     /// Returns `Ok(())` on successful revocation.
     ///
     /// [<https://developers.akahu.nz/reference/delete_token>]
-    pub async fn revoke_token(&self, user_token: &str) -> crate::error::AkahuResult<()> {
+    pub async fn revoke_token(&self, user_token: &UserToken) -> crate::error::AkahuResult<()> {
         const URI: &str = "token";
 
         let mut headers = HeaderMap::new();
         headers.insert(
             "Authorization",
-            HeaderValue::from_str(&format!("Bearer {}", user_token))?,
+            HeaderValue::from_str(&format!("Bearer {}", user_token.as_str()))?,
         );
         headers.insert("Accept", HeaderValue::from_static("application/json"));
 

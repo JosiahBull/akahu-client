@@ -2,6 +2,8 @@
 //!
 //! This module contains methods for retrieving authenticated user information.
 
+use crate::{ItemResponse, User, UserToken};
+
 use super::AkahuClient;
 use reqwest::Method;
 
@@ -31,21 +33,11 @@ impl AkahuClient {
     /// This endpoint requires user-scoped authentication. The `AKAHU` scope is needed
     /// to access the user's email address and other profile information.
     ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # use akahu_client::AkahuClient;
-    /// # async fn example(client: AkahuClient, user_token: &str) {
-    /// let user = client.get_me(user_token).await;
-    /// println!("User ID: {}", user.id);
-    /// if let Some(email) = user.email {
-    ///     println!("Email: {}", email);
-    /// }
-    /// # }
-    /// ```
-    ///
     /// [<https://developers.akahu.nz/reference/get_me>]
-    pub async fn get_me(&self, user_token: &str) -> crate::error::AkahuResult<crate::models::User> {
+    pub async fn get_me(
+        &self,
+        user_token: &UserToken,
+    ) -> crate::error::AkahuResult<crate::models::User> {
         const URI: &str = "me";
 
         let headers = self.build_user_headers(user_token)?;
@@ -56,7 +48,7 @@ impl AkahuClient {
             .headers(headers)
             .build()?;
 
-        let user_response: crate::models::UserResponse = self.execute_request(req).await?;
+        let user_response: ItemResponse<User> = self.execute_request(req).await?;
 
         Ok(user_response.item)
     }

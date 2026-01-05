@@ -45,9 +45,14 @@ pub enum AkahuError {
     #[error("URL parse error: {0}")]
     UrlParse(#[from] url::ParseError),
 
-    /// JSON serialization/deserialization error
-    #[error("JSON serialization error: {0}")]
-    JsonSerialization(#[from] serde_json::Error),
+    /// JSON deserialization error
+    #[error("JSON deserialization error: {error}{}", .source_string.as_ref().map(|s| format!(" - {}", s)).unwrap_or_default())]
+    JsonDeserialization {
+        /// The deserialisation error that was generated.
+        error: serde_json::Error,
+        /// The string that was originally being deserialized, if available.
+        source_string: Option<String>,
+    },
 
     /// Missing app secret - call with_app_secret() first for app-scoped endpoints
     #[error("Missing app secret - call with_app_secret() first")]

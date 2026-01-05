@@ -3,8 +3,13 @@
 //! This module contains internal methods for request execution, error handling,
 //! and header construction. These methods are used by all endpoint implementations.
 
+use crate::UserToken;
+
 use super::AkahuClient;
-use reqwest::header::{ACCEPT, AUTHORIZATION, HeaderMap, HeaderValue};
+use reqwest::{
+    StatusCode,
+    header::{ACCEPT, AUTHORIZATION, HeaderMap, HeaderValue},
+};
 
 const AKAHU_ID_HEADER: &str = "X-Akahu-Id";
 
@@ -17,7 +22,15 @@ impl AkahuClient {
         let res = self.client.execute(req).await?;
 
         if res.status().is_success() {
-            Ok(res.json().await?)
+            let text = res.text().await?;
+            // Try to deserialize into the expected type T
+            let deserialized: T = serde_json::from_str(&text).map_err(|e| {
+                crate::error::AkahuError::JsonDeserialization {
+                    error: e,
+                    source_string: Some(text),
+                }
+            })?;
+            Ok(deserialized)
         } else {
             self.handle_error_response(res).await
         }
@@ -29,7 +42,6 @@ impl AkahuClient {
         res: reqwest::Response,
     ) -> crate::error::AkahuResult<T> {
         let status = res.status();
-        let status_code = status.as_u16();
 
         // Try to parse error message from response body
         let message = match res.json::<crate::models::ErrorResponse>().await {
@@ -40,18 +52,20 @@ impl AkahuClient {
                 .to_string(),
         };
 
-        Err(match status_code {
-            400 => crate::error::AkahuError::BadRequest {
+        Err(match status {
+            StatusCode::BAD_REQUEST => crate::error::AkahuError::BadRequest {
                 message,
-                status: status_code,
+                status: StatusCode::BAD_REQUEST.as_u16(),
             },
-            401 => crate::error::AkahuError::Unauthorized { message },
-            403 => crate::error::AkahuError::Forbidden { message },
-            404 => crate::error::AkahuError::NotFound { message },
-            429 => crate::error::AkahuError::RateLimited { message },
-            500 => crate::error::AkahuError::InternalServerError { message },
+            StatusCode::UNAUTHORIZED => crate::error::AkahuError::Unauthorized { message },
+            StatusCode::FORBIDDEN => crate::error::AkahuError::Forbidden { message },
+            StatusCode::NOT_FOUND => crate::error::AkahuError::NotFound { message },
+            StatusCode::TOO_MANY_REQUESTS => crate::error::AkahuError::RateLimited { message },
+            StatusCode::INTERNAL_SERVER_ERROR => {
+                crate::error::AkahuError::InternalServerError { message }
+            }
             _ => crate::error::AkahuError::ApiError {
-                status: status_code,
+                status: status.as_u16(),
                 message,
             },
         })
@@ -60,13 +74,13 @@ impl AkahuClient {
     /// Build standard headers for user-scoped requests
     pub(super) fn build_user_headers(
         &self,
-        user_token: &str,
+        user_token: &UserToken,
     ) -> crate::error::AkahuResult<HeaderMap> {
         let mut headers = HeaderMap::new();
         headers.insert(AKAHU_ID_HEADER, HeaderValue::from_str(&self.app_id_token)?);
         headers.insert(
             AUTHORIZATION,
-            HeaderValue::from_str(&format!("Bearer {}", user_token))?,
+            HeaderValue::from_str(&format!("Bearer {}", user_token.as_str()))?,
         );
         headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
         Ok(headers)

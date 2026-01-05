@@ -2,9 +2,22 @@
 //!
 //! This module contains methods for initiating and managing payments to New Zealand bank accounts.
 
+use crate::{ItemResponse, ListResponse, Payment, PaymentId, UserToken};
+
 use super::AkahuClient;
 use reqwest::{Method, header::HeaderValue};
 use std::collections::HashMap;
+
+// TODO: These should be replaced with function parameters using bon builders
+#[derive(serde::Serialize)]
+struct CreatePaymentRequest {
+    // Placeholder - fields need to be added based on API requirements
+}
+
+#[derive(serde::Serialize)]
+struct CreateIrdPaymentRequest {
+    // Placeholder - fields need to be added based on API requirements
+}
 
 impl AkahuClient {
     // ==================== Payments Endpoints ====================
@@ -34,7 +47,7 @@ impl AkahuClient {
     /// [<https://developers.akahu.nz/reference/get_payments>]
     pub async fn get_payments(
         &self,
-        user_token: &str,
+        user_token: &UserToken,
         start: Option<chrono::DateTime<chrono::Utc>>,
         end: Option<chrono::DateTime<chrono::Utc>>,
     ) -> crate::error::AkahuResult<Vec<crate::models::Payment>> {
@@ -69,7 +82,7 @@ impl AkahuClient {
             .headers(headers)
             .build()?;
 
-        let response: crate::models::PaymentsListResponse = self.execute_request(req).await?;
+        let response: ListResponse<Payment> = self.execute_request(req).await?;
 
         Ok(response.items)
     }
@@ -110,9 +123,9 @@ impl AkahuClient {
     /// [<https://developers.akahu.nz/reference/post_payments>]
     pub async fn create_payment(
         &self,
-        user_token: &str,
-        request: crate::models::CreatePaymentRequest,
-    ) -> crate::error::AkahuResult<crate::models::Payment> {
+        user_token: &UserToken,
+        request: CreatePaymentRequest,
+    ) -> crate::error::AkahuResult<Payment> {
         const URI: &str = "payments";
 
         let mut headers = self.build_user_headers(user_token)?;
@@ -125,7 +138,7 @@ impl AkahuClient {
             .json(&request)
             .build()?;
 
-        let response: crate::models::PaymentResponse = self.execute_request(req).await?;
+        let response: ItemResponse<Payment> = self.execute_request(req).await?;
 
         Ok(response.item)
     }
@@ -153,9 +166,9 @@ impl AkahuClient {
     /// [<https://developers.akahu.nz/reference/post_payments-ird>]
     pub async fn create_ird_payment(
         &self,
-        user_token: &str,
-        request: crate::models::CreateIrdPaymentRequest,
-    ) -> crate::error::AkahuResult<crate::models::Payment> {
+        user_token: &UserToken,
+        request: CreateIrdPaymentRequest,
+    ) -> crate::error::AkahuResult<Payment> {
         const URI: &str = "payments/ird";
 
         let mut headers = self.build_user_headers(user_token)?;
@@ -168,7 +181,7 @@ impl AkahuClient {
             .json(&request)
             .build()?;
 
-        let response: crate::models::PaymentResponse = self.execute_request(req).await?;
+        let response: ItemResponse<Payment> = self.execute_request(req).await?;
 
         Ok(response.item)
     }
@@ -197,10 +210,10 @@ impl AkahuClient {
     /// [<https://developers.akahu.nz/reference/get_payments-id>]
     pub async fn get_payment(
         &self,
-        user_token: &str,
-        payment_id: &str,
+        user_token: &UserToken,
+        payment_id: &PaymentId,
     ) -> crate::error::AkahuResult<crate::models::Payment> {
-        let uri = format!("payments/{}", payment_id);
+        let uri = format!("payments/{}", payment_id.as_str());
 
         let headers = self.build_user_headers(user_token)?;
 
@@ -210,7 +223,7 @@ impl AkahuClient {
             .headers(headers)
             .build()?;
 
-        let response: crate::models::PaymentResponse = self.execute_request(req).await?;
+        let response: ItemResponse<Payment> = self.execute_request(req).await?;
 
         Ok(response.item)
     }
@@ -245,10 +258,10 @@ impl AkahuClient {
     /// [<https://developers.akahu.nz/reference/put_payments-id-cancel>]
     pub async fn cancel_payment(
         &self,
-        user_token: &str,
-        payment_id: &str,
+        user_token: &UserToken,
+        payment_id: &PaymentId,
     ) -> crate::error::AkahuResult<crate::models::Payment> {
-        let uri = format!("payments/{}/cancel", payment_id);
+        let uri = format!("payments/{}/cancel", payment_id.as_str());
 
         let headers = self.build_user_headers(user_token)?;
 
@@ -258,7 +271,7 @@ impl AkahuClient {
             .headers(headers)
             .build()?;
 
-        let response: crate::models::PaymentResponse = self.execute_request(req).await?;
+        let response: ItemResponse<Payment> = self.execute_request(req).await?;
 
         Ok(response.item)
     }

@@ -2,6 +2,12 @@
 //! for the Akahu model this is derived from is
 //! [here](https://developers.akahu.nz/docs/the-transaction-model).
 
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    AccountId, BankAccountNumber, CategoryId, ConnectionId, Cursor, MerchantId, TransactionId,
+};
+
 /// A transaction is a record of money moving between two accounts. Akahu can
 /// provide transaction data from connected accounts for all bank integrations
 /// and a selection of non-bank integrations. See the [Supported
@@ -23,72 +29,76 @@
 /// See our [Accessing Transactional
 /// Data](https://developers.akahu.nz/docs/accessing-transactional-data/) guide
 /// to learn how to retrieve transactions from Akahu's API.
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct Transaction {
     /// The `id` key is a unique identifier for the transaction in the Akahu
     /// system. It is always be prefixed by trans_ so that you can tell that it
     /// refers to a transaction.
     #[serde(rename = "_id")]
-    id: String,
+    pub id: TransactionId,
 
     /// The `account` key indicates which account this transaction belongs to.
     /// See our guide to Accessing Account Data to learn how to get this
     /// account, and our Account Model docs to learn more about accounts.
     #[serde(rename = "_account")]
-    account: String,
+    pub account: AccountId,
 
     /// This is the ID of provider that Akahu has retrieved this transaction
     /// from. You can get a list of connections from our
     /// [/connections](https://developers.akahu.nz/reference/get_connections)
     /// endpoint.
     #[serde(rename = "_connection")]
-    connection: String,
+    pub connection: ConnectionId,
 
     /// The time that Akahu first saw this transaction (as an ISO 8601
     /// timestamp). This is unrelated to the transaction date (when the
     /// transaction occurred) because Akahu may have retrieved an old
     /// transaction.
-    created_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
 
     /// The date that the transaction was posted with the account holder, as an
     /// ISO 8601 timestamp. In many cases this will only be accurate to the day,
     /// due to the level of detail provided by the bank.
-    date: chrono::DateTime<chrono::Utc>,
+    pub date: chrono::DateTime<chrono::Utc>,
 
     /// The transacton description as provided by the bank. Some minor cleanup
     /// is done by Akahu (such as whitespace normalisation), but this value is
     /// otherwise direct from the bank.
-    description: String,
+    pub description: String,
 
     /// The amount of money that was moved by this transaction.
     #[serde(with = "rust_decimal::serde::arbitrary_precision")]
-    amount: rust_decimal::Decimal,
+    pub amount: rust_decimal::Decimal,
 
     /// If available, the account balance immediately after this transaction was
     /// made. This value is direct from the bank and not modified by Akahu.
-    #[serde(with = "rust_decimal::serde::arbitrary_precision_option")]
-    balance: Option<rust_decimal::Decimal>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "rust_decimal::serde::arbitrary_precision_option"
+    )]
+    pub balance: Option<rust_decimal::Decimal>,
 
     /// What sort of transaction this is. Akahu tries to find a specific transaction
     /// type, falling back to "CREDIT" or "DEBIT" if nothing else is available.
     ///
     /// [<https://developers.akahu.nz/docs/the-transaction-model#type>]
     #[serde(rename = "type")]
-    kind: TransactionKind,
+    pub kind: TransactionKind,
 
     /// This is data added by the Akahu enrichment engine. You must have
     /// additional permissions to view this data.
     ///
     /// [<https://developers.akahu.nz/docs/the-transaction-model#enriched-transaction-data>]
     #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
-    enriched_data: Option<EnrichedTransactionData>,
+    pub enriched_data: Option<EnrichedTransactionData>,
 }
 
 /// What sort of transaction this is. Akahu tries to find a specific transaction
 /// type, falling back to "CREDIT" or "DEBIT" if nothing else is available.
 ///
 /// [<https://developers.akahu.nz/docs/the-transaction-model#type>]
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub enum TransactionKind {
     /// Money has entered the account.
     #[serde(rename = "CREDIT")]
@@ -138,32 +148,32 @@ pub enum TransactionKind {
 /// permissions to view this data.
 ///
 /// [<https://developers.akahu.nz/docs/the-transaction-model#enriched-transaction-data>]
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct EnrichedTransactionData {
-    category: TransactionCategory,
-    merchant: TransactionMerchant,
+    pub category: TransactionCategory,
+    pub merchant: TransactionMerchant,
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct TransactionCategory {
     #[serde(rename = "_id")]
-    id: String,
-    name: nzfcc::NzfccCode,
-    groups: TransactionGroups,
+    pub id: CategoryId,
+    pub name: nzfcc::NzfccCode,
+    pub groups: TransactionGroups,
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct TransactionGroups {
-    personal_finance: PersonalFinanceGroup,
+    pub personal_finance: PersonalFinanceGroup,
     #[serde(flatten)]
-    other_groups: Option<std::collections::HashMap<String, serde_json::Value>>,
+    pub other_groups: Option<std::collections::HashMap<String, serde_json::Value>>,
 }
 
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct PersonalFinanceGroup {
     #[serde(rename = "_id")]
-    id: String,
-    name: nzfcc::CategoryGroup,
+    pub id: CategoryId,
+    pub name: nzfcc::CategoryGroup,
 }
 
 /// Akahu defines a merchant as the business who was party to this transaction.
@@ -172,24 +182,25 @@ pub struct PersonalFinanceGroup {
 /// Merchant data is provided as a name, an optional website, and a merchant
 ///
 /// [<https://developers.akahu.nz/docs/the-transaction-model#merchant>]
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct TransactionMerchant {
     /// A unique identifier for the merchant in the Akahu system.
     ///
     /// Will always be prefixed with `_merchant`.
     #[serde(rename = "_id")]
-    id: String,
+    pub id: MerchantId,
     /// The name of the merchant, for example "The Warehouse".
-    name: String,
+    pub name: String,
     /// The merchant's website, if available.
-    website: Option<url::Url>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub website: Option<url::Url>,
 }
 
 /// This is other metadata that we extract from the transaction, including the
 /// following fields (where possible).
 ///
 /// [<https://developers.akahu.nz/docs/the-transaction-model#meta>]
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct TransactionMeta {
     /// Fields that are entered when a payment is made.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -205,7 +216,7 @@ pub struct TransactionMeta {
 
     /// The formatted NZ bank account number of the other party to this transaction.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub other_account: Option<String>,
+    pub other_account: Option<BankAccountNumber>,
 
     /// If this transaction was made in another currency, details about the currency conversion.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -223,7 +234,7 @@ pub struct TransactionMeta {
 }
 
 /// Details about a currency conversion for a transaction made in another currency.
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct TransactionConversion {
     /// The amount in the foreign currency.
     #[serde(with = "rust_decimal::serde::arbitrary_precision")]
@@ -235,55 +246,28 @@ pub struct TransactionConversion {
     pub rate: rust_decimal::Decimal,
 }
 
-/// Query parameters for transaction endpoints.
-///
-/// Use this to filter transactions by date range and paginate through results.
-///
-/// # Example
-///
-/// ```no_run
-/// # use akahu_client::TransactionQueryParams;
-/// let query = TransactionQueryParams::builder()
-///     .start(chrono::Utc::now() - chrono::Duration::days(30))
-///     .end(chrono::Utc::now())
-///     .build();
-/// ```
-#[derive(Debug, Clone, Default, bon::Builder)]
-#[builder(on(String, into), on(chrono::DateTime<chrono::Utc>, into))]
-pub struct TransactionQueryParams {
-    /// Start of the time range (exclusive). Transactions after this timestamp will be included.
-    /// All timestamps are in UTC.
-    pub start: Option<chrono::DateTime<chrono::Utc>>,
-
-    /// End of the time range (inclusive). Transactions through this timestamp will be included.
-    /// All timestamps are in UTC.
-    pub end: Option<chrono::DateTime<chrono::Utc>>,
-
-    /// Cursor for pagination. Use the value from `cursor.next` in the previous response
-    /// to fetch the next page of results. When null, you've reached the end.
-    pub cursor: Option<String>,
-}
-
-/// Paginated response containing a list of transactions and a cursor for pagination.
-///
-/// The Akahu API returns transactions in pages of up to 100 items. Use the `cursor.next`
-/// value to fetch subsequent pages.
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct PaginatedTransactionResponse {
-    /// List of transactions in this page (maximum 100 items).
-    pub items: Vec<Transaction>,
-
-    /// Pagination cursor. Use `cursor.next` to fetch the next page.
-    /// When `cursor.next` is null, you've reached the final page.
-    pub cursor: TransactionCursor,
-}
-
 /// Cursor for paginating through transaction results.
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct TransactionCursor {
     /// Cursor value to use for fetching the next page of results.
-    /// Will be `null` when there are no more pages.
-    pub next: Option<String>,
+    pub next: Option<Cursor>,
+}
+
+/// Query parameters for filtering transactions by date range and pagination.
+#[derive(Debug, Clone, Default, bon::Builder, Serialize)]
+#[builder(on(chrono::DateTime<chrono::Utc>, into))]
+pub struct TransactionQueryParams {
+    /// Start of the time range (exclusive).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start: Option<chrono::DateTime<chrono::Utc>>,
+
+    /// End of the time range (inclusive).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub end: Option<chrono::DateTime<chrono::Utc>>,
+
+    /// Cursor for pagination.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<Cursor>,
 }
 
 /// A pending transaction that has not yet been settled.
@@ -293,15 +277,15 @@ pub struct TransactionCursor {
 /// identifiers and are not enriched by Akahu.
 ///
 /// [<https://developers.akahu.nz/docs/accessing-transactional-data#pending-transactions>]
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct PendingTransaction {
     /// The account this pending transaction belongs to.
     #[serde(rename = "_account")]
-    pub account: String,
+    pub account: AccountId,
 
     /// This is the ID of provider that Akahu has retrieved this transaction from.
     #[serde(rename = "_connection")]
-    pub connection: String,
+    pub connection: ConnectionId,
 
     /// The time that this pending transaction was last updated (as an ISO 8601 timestamp).
     pub updated_at: chrono::DateTime<chrono::Utc>,
@@ -324,15 +308,4 @@ pub struct PendingTransaction {
     /// Additional metadata about the transaction.
     #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
     pub meta: Option<TransactionMeta>,
-}
-
-/// Paginated response containing a list of pending transactions.
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
-pub struct PaginatedPendingTransactionResponse {
-    /// List of pending transactions in this page.
-    pub items: Vec<PendingTransaction>,
-
-    /// Pagination cursor. Use `cursor.next` to fetch the next page.
-    /// When `cursor.next` is null, you've reached the final page.
-    pub cursor: TransactionCursor,
 }

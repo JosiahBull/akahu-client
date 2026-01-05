@@ -2,14 +2,18 @@
 //!
 //! Connections represent financial institutions that users can connect to.
 
+use serde::{Deserialize, Serialize};
+
+use crate::ConnectionId;
+
 /// A connection to a financial institution.
 ///
 /// [<https://developers.akahu.nz/reference/get_connections>]
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct Connection {
     /// Unique identifier for the connection
     #[serde(rename = "_id")]
-    pub id: String,
+    pub id: ConnectionId,
 
     /// Name of the financial institution
     pub name: String,
@@ -20,5 +24,5 @@ pub struct Connection {
 
     /// Additional metadata about the connection
     #[serde(flatten)]
-    pub additional_fields: Option<std::collections::HashMap<String, serde_json::Value>>,
+    pub additional_fields: std::collections::HashMap<String, serde_json::Value>,
 }

@@ -1,8 +1,8 @@
 //! User profile models for the Akahu API.
-//!
-//! These models represent the user's profile information that can be accessed
-//! via the `/me` endpoint. The visibility of certain fields depends on the
-//! permissions granted to your application.
+
+use serde::{Deserialize, Serialize};
+
+use crate::UserId;
 
 /// Represents the authenticated user's profile information.
 ///
@@ -11,15 +11,13 @@
 /// has been granted the appropriate scopes (e.g., `AKAHU` scope for email access).
 ///
 /// [<https://developers.akahu.nz/reference/get_me>]
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct User {
     /// The unique identifier for the user in the Akahu system.
     ///
-    /// This ID is always prefixed with `user_` so that you can tell it belongs to a user.
-    ///
     /// [<https://developers.akahu.nz/reference/get_me>]
     #[serde(rename = "_id")]
-    pub id: String,
+    pub id: UserId,
 
     /// The timestamp when this user account was created.
     ///
@@ -62,19 +60,4 @@ pub struct User {
     /// [<https://developers.akahu.nz/reference/get_me>]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub access_granted_at: Option<chrono::DateTime<chrono::Utc>>,
-}
-
-/// Standard response wrapper for a single user item.
-///
-/// This follows Akahu's standard response format where successful responses
-/// have a `success` field set to `true` and the actual data in the `item` field.
-///
-/// [<https://developers.akahu.nz/docs/response-formatting>]
-#[derive(Debug, serde::Deserialize, Clone)]
-pub struct UserResponse {
-    /// Indicates if the request was successful.
-    pub success: bool,
-
-    /// The user data.
-    pub item: User,
 }

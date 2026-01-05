@@ -2,6 +2,10 @@
 //! for the Akahu model this is derived from is
 //! [here](https://developers.akahu.nz/docs/making-a-transfer).
 
+use serde::{Deserialize, Serialize};
+
+use crate::{AccountId, TransferId};
+
 /// A transfer is a money movement between two accounts belonging to the same user.
 /// Transfers are initiated through Akahu and can be tracked through various status stages.
 ///
@@ -9,12 +13,11 @@
 ///
 /// See our [Making a Transfer](https://developers.akahu.nz/docs/making-a-transfer) guide
 /// to learn how to create and manage transfers through Akahu's API.
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct Transfer {
     /// The unique identifier for the transfer in the Akahu system.
-    /// It is always prefixed by `transfer_` so that you can tell that it refers to a transfer.
     #[serde(rename = "_id")]
-    pub id: String,
+    pub id: TransferId,
 
     /// The current status of the transfer.
     ///
@@ -26,12 +29,10 @@ pub struct Transfer {
     pub sid: String,
 
     /// The account ID of the source account (where money is coming from).
-    /// Must be prefixed with `acc_`.
-    pub from: String,
+    pub from: AccountId,
 
     /// The account ID of the destination account (where money is going to).
-    /// Must be prefixed with `acc_`.
-    pub to: String,
+    pub to: AccountId,
 
     /// The amount of money to transfer in dollars.
     #[serde(with = "rust_decimal::serde::arbitrary_precision")]
@@ -45,11 +46,13 @@ pub struct Transfer {
 
     /// A historical record of status changes with timestamps.
     /// Each entry shows when the transfer transitioned to a particular status.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub timeline: Vec<TransferTimelineEntry>,
 
     /// Indicates if the transfer will no longer be updated.
     /// When `true`, the transfer has reached a final state and polling can cease.
-    pub final_: bool,
+    #[serde(rename = "final")]
+    pub complete: bool,
 
     /// Additional details provided for ERROR or DECLINED status transfers.
     /// Provides context about why the transfer failed.
@@ -61,7 +64,7 @@ pub struct Transfer {
 ///
 /// Transfers progress through various statuses from creation to completion.
 /// Some statuses indicate errors or exceptional conditions.
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TransferStatus {
     /// Transfer is prepared and ready for processing.
@@ -90,68 +93,11 @@ pub enum TransferStatus {
 ///
 /// The timeline provides a historical record of all status transitions,
 /// allowing you to track the progress of a transfer over time.
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct TransferTimelineEntry {
     /// The status that the transfer transitioned to.
     pub status: TransferStatus,
 
-    /// The timestamp when this status change occurred (ISO 8601 format).
+    /// The timestamp when this status change occurred.
     pub time: chrono::DateTime<chrono::Utc>,
-}
-
-/// Parameters for creating a new transfer.
-///
-/// Use this struct when calling the POST /transfers endpoint to initiate
-/// a transfer between two of the user's connected accounts.
-///
-/// # Example
-///
-/// ```no_run
-/// # use akahu_client::TransferCreateParams;
-/// # use rust_decimal::Decimal;
-/// let params = TransferCreateParams::builder()
-///     .from("acc_123...".to_string())
-///     .to("acc_456...".to_string())
-///     .amount(Decimal::new(10000, 2)) // $100.00
-///     .build();
-/// ```
-#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, bon::Builder)]
-#[builder(on(String, into), on(rust_decimal::Decimal, into))]
-pub struct TransferCreateParams {
-    /// The account ID of the destination account (where money is going to).
-    /// Must be prefixed with `acc_`.
-    pub to: String,
-
-    /// The account ID of the source account (where money is coming from).
-    /// Must be prefixed with `acc_`.
-    pub from: String,
-
-    /// The amount of money to transfer in dollars.
-    #[serde(with = "rust_decimal::serde::arbitrary_precision")]
-    pub amount: rust_decimal::Decimal,
-}
-
-/// Query parameters for listing transfers.
-///
-/// Use this struct to filter transfers by date range when calling the GET /transfers endpoint.
-///
-/// # Example
-///
-/// ```no_run
-/// # use akahu_client::TransferQueryParams;
-/// let query = TransferQueryParams::builder()
-///     .start(chrono::Utc::now() - chrono::Duration::days(7))
-///     .end(chrono::Utc::now())
-///     .build();
-/// ```
-#[derive(Debug, Default, Clone, bon::Builder)]
-#[builder(on(chrono::DateTime<chrono::Utc>, into))]
-pub struct TransferQueryParams {
-    /// The start of the date range (exclusive).
-    /// Defaults to 30 days ago if not specified.
-    pub start: Option<chrono::DateTime<chrono::Utc>>,
-
-    /// The end of the date range (inclusive).
-    /// Defaults to now if not specified.
-    pub end: Option<chrono::DateTime<chrono::Utc>>,
 }

@@ -2,6 +2,8 @@
 //!
 //! This module contains methods for managing user accounts connected to your Akahu application.
 
+use crate::{AccountId, UserToken};
+
 use super::AkahuClient;
 use reqwest::Method;
 
@@ -14,14 +16,15 @@ impl AkahuClient {
     ///
     /// # Returns
     ///
-    /// A vector of all accounts the user has connected to your application.
+    /// A response containing all accounts the user has connected to your application.
     /// The returned account data depends on the permissions your application has been granted.
+    /// Access the accounts via the `.items` field.
     ///
     /// [<https://developers.akahu.nz/reference/get_accounts>]
     pub async fn get_accounts(
         &self,
-        user_token: &str,
-    ) -> crate::error::AkahuResult<Vec<crate::models::Account>> {
+        user_token: &UserToken,
+    ) -> crate::error::AkahuResult<crate::models::ListResponse<crate::models::Account>> {
         const URI: &str = "accounts";
 
         let headers = self.build_user_headers(user_token)?;
@@ -44,16 +47,17 @@ impl AkahuClient {
     ///
     /// # Returns
     ///
-    /// The account details for the specified account.
+    /// A response containing the account details for the specified account.
     /// The returned account data depends on the permissions your application has been granted.
+    /// Access the account via the `.item` field.
     ///
     /// [<https://developers.akahu.nz/reference/get_accounts-id>]
     pub async fn get_account(
         &self,
-        user_token: &str,
-        account_id: &str,
-    ) -> crate::error::AkahuResult<crate::models::Account> {
-        let uri = format!("accounts/{}", account_id);
+        user_token: &UserToken,
+        account_id: &AccountId,
+    ) -> crate::error::AkahuResult<crate::models::ItemResponse<crate::models::Account>> {
+        let uri = format!("accounts/{}", account_id.as_str());
 
         let headers = self.build_user_headers(user_token)?;
 
@@ -87,10 +91,10 @@ impl AkahuClient {
     /// [<https://developers.akahu.nz/reference/delete_accounts-id>]
     pub async fn revoke_account_access(
         &self,
-        user_token: &str,
-        account_id: &str,
+        user_token: &UserToken,
+        account_id: &AccountId,
     ) -> crate::error::AkahuResult<()> {
-        let uri = format!("accounts/{}", account_id);
+        let uri = format!("accounts/{}", account_id.as_str());
 
         let headers = self.build_user_headers(user_token)?;
 

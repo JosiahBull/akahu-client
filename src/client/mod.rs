@@ -3,23 +3,17 @@
 //! This module contains the main `AkahuClient` struct and all endpoint implementations,
 //! organized by resource type for better maintainability.
 
+use crate::{AppSecret, AppToken};
+
 const DEFAULT_BASE_URL: &str = "https://api.akahu.io/v1";
 
 /// The main Akahu API client.
 ///
-/// Use the builder pattern to construct a new client:
-///
-/// ```no_run
-/// # use akahu_client::AkahuClient;
-/// let client = AkahuClient::builder()
-///     .client(reqwest::Client::new())
-///     .app_id_token("app_token_...".to_string())
-///     .build();
-/// ```
+/// Use the builder pattern to construct a new client.
 pub struct AkahuClient {
     pub(super) client: reqwest::Client,
-    pub(super) app_id_token: String,
-    pub(super) app_secret: Option<String>,
+    pub(super) app_id_token: AppToken,
+    pub(super) app_secret: Option<AppSecret>,
     pub(super) base_url: String,
 }
 
@@ -32,26 +26,15 @@ impl AkahuClient {
     /// * `client` - The HTTP client to use for requests
     /// * `app_id_token` - Your Akahu application ID token
     /// * `base_url` - Optional custom base URL (defaults to `https://api.akahu.io/v1`)
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # use akahu_client::AkahuClient;
-    /// let client = AkahuClient::builder()
-    ///     .client(reqwest::Client::new())
-    ///     .app_id_token("app_token_...".to_string())
-    ///     .build();
-    /// ```
     #[builder]
     pub fn new(
         client: reqwest::Client,
-        app_id_token: String,
-        #[builder(default = DEFAULT_BASE_URL.to_string())]
-        base_url: String,
+        app_id_token: impl Into<AppToken>,
+        #[builder(default = DEFAULT_BASE_URL.to_string())] base_url: String,
     ) -> Self {
         Self {
             client,
-            app_id_token,
+            app_id_token: app_id_token.into(),
             app_secret: None,
             base_url,
         }
@@ -63,8 +46,8 @@ impl AkahuClient {
     /// These endpoints use HTTP Basic Authentication with app_id_token:app_secret.
     ///
     /// **Note:** App-scoped endpoints are not available for Personal Apps.
-    pub fn with_app_secret(mut self, app_secret: String) -> Self {
-        self.app_secret = Some(app_secret);
+    pub fn with_app_secret(mut self, app_secret: impl Into<AppSecret>) -> Self {
+        self.app_secret = Some(app_secret.into());
         self
     }
 }
@@ -80,6 +63,5 @@ mod connections;
 mod me;
 mod payments;
 mod refresh;
-mod support;
 mod transactions;
 mod transfers;
