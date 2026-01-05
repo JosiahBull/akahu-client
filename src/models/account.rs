@@ -21,7 +21,7 @@ pub struct Account {
     ///
     /// [<https://developers.akahu.nz/docs/the-account-model#_id>]
     #[serde(rename = "_id")]
-    id: String,
+    pub id: String,
 
     /// The identifier of this account's predecessor.
     ///
@@ -33,7 +33,7 @@ pub struct Account {
     ///
     /// [<https://developers.akahu.nz/docs/the-account-model#_migrated>]
     #[serde(rename = "_migrated")]
-    migrated: String,
+    pub migrated: String,
 
     /// Financial accounts are connected to Akahu via an authorisation with the
     /// user's financial institution. Multiple accounts can be connected during
@@ -54,7 +54,7 @@ pub struct Account {
     ///
     /// [<https://developers.akahu.nz/docs/the-account-model#_authorisation>]
     #[serde(rename = "_authorisation")]
-    authorisation: String,
+    pub authorisation: String,
 
     /// Deprecated: Please use `authorisation` instead.
     ///
@@ -65,14 +65,14 @@ pub struct Account {
         default,
         skip_serializing_if = "Option::is_none"
     )]
-    credentials: Option<String>,
+    pub credentials: Option<String>,
 
     /// This is the name of the account. If the connection allows customisation,
     /// the name will be the custom name (or nickname), e.g. "Spending Account".
     /// Otherwise Akahu falls back to the product name, e.g. "Super Saver".
     ///
     /// [<https://developers.akahu.nz/docs/the-account-model#name>]
-    name: String,
+    pub name: String,
 
     /// This attribute indicates the status of Akahu's connection to this account.
     ///
@@ -82,7 +82,7 @@ pub struct Account {
     /// cases can cause our long-lived access to be revoked.
     ///
     /// [<https://developers.akahu.nz/docs/the-account-model#status>]
-    status: Active,
+    pub status: Active,
 
     /// If the account has a well defined account number (eg. a bank account
     /// number, or credit card number) this will be defined here with a standard
@@ -95,7 +95,7 @@ pub struct Account {
     ///
     /// [<https://developers.akahu.nz/docs/the-account-model#formatted_account>]
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    formatted_acount: Option<String>,
+    pub formatted_acount: Option<String>,
 
     /// Akahu can refresh different parts of an account's data at different rates.
     /// The timestamps in the refreshed object tell you when that account data was
@@ -105,12 +105,12 @@ pub struct Account {
     /// account (balance/metadata/transactions) is up to date as of $TIME".
     ///
     /// [<https://developers.akahu.nz/docs/the-account-model#refreshed>]
-    refreshed: RefreshDetails,
+    pub refreshed: RefreshDetails,
 
     /// The account balance.
     ///
     /// [<https://developers.akahu.nz/docs/the-account-model#balance>]
-    balance: BalanceDetails,
+    pub balance: BalanceDetails,
 
     /// What sort of account this is. Akahu provides specific bank account
     /// types, and falls back to more general types for other types of
@@ -118,7 +118,7 @@ pub struct Account {
     ///
     /// [<https://developers.akahu.nz/docs/the-account-model#type>]
     #[serde(rename = "type")]
-    kind: BankAccountKind,
+    pub kind: BankAccountKind,
 
     /// The list of attributes indicates what abilities an account has.
     ///
@@ -126,7 +126,7 @@ pub struct Account {
     ///
     /// [<https://developers.akahu.nz/docs/the-account-model#attributes>]
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    attributes: Vec<Attribute>,
+    pub attributes: Vec<Attribute>,
 }
 
 /// This attribute indicates the status of Akahu's connection to this account.

@@ -234,3 +234,105 @@ pub struct TransactionConversion {
     #[serde(with = "rust_decimal::serde::arbitrary_precision")]
     pub rate: rust_decimal::Decimal,
 }
+
+/// Query parameters for transaction endpoints.
+///
+/// Use this to filter transactions by date range and paginate through results.
+///
+/// # Example
+///
+/// ```no_run
+/// # use akahu_client::TransactionQueryParams;
+/// let query = TransactionQueryParams::builder()
+///     .start(chrono::Utc::now() - chrono::Duration::days(30))
+///     .end(chrono::Utc::now())
+///     .build();
+/// ```
+#[derive(Debug, Clone, Default, bon::Builder)]
+#[builder(on(String, into), on(chrono::DateTime<chrono::Utc>, into))]
+pub struct TransactionQueryParams {
+    /// Start of the time range (exclusive). Transactions after this timestamp will be included.
+    /// All timestamps are in UTC.
+    pub start: Option<chrono::DateTime<chrono::Utc>>,
+
+    /// End of the time range (inclusive). Transactions through this timestamp will be included.
+    /// All timestamps are in UTC.
+    pub end: Option<chrono::DateTime<chrono::Utc>>,
+
+    /// Cursor for pagination. Use the value from `cursor.next` in the previous response
+    /// to fetch the next page of results. When null, you've reached the end.
+    pub cursor: Option<String>,
+}
+
+/// Paginated response containing a list of transactions and a cursor for pagination.
+///
+/// The Akahu API returns transactions in pages of up to 100 items. Use the `cursor.next`
+/// value to fetch subsequent pages.
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+pub struct PaginatedTransactionResponse {
+    /// List of transactions in this page (maximum 100 items).
+    pub items: Vec<Transaction>,
+
+    /// Pagination cursor. Use `cursor.next` to fetch the next page.
+    /// When `cursor.next` is null, you've reached the final page.
+    pub cursor: TransactionCursor,
+}
+
+/// Cursor for paginating through transaction results.
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+pub struct TransactionCursor {
+    /// Cursor value to use for fetching the next page of results.
+    /// Will be `null` when there are no more pages.
+    pub next: Option<String>,
+}
+
+/// A pending transaction that has not yet been settled.
+///
+/// Pending transactions are not stable - the date or description may change due to
+/// the unreliable nature of underlying NZ bank data. They are not assigned unique
+/// identifiers and are not enriched by Akahu.
+///
+/// [<https://developers.akahu.nz/docs/accessing-transactional-data#pending-transactions>]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+pub struct PendingTransaction {
+    /// The account this pending transaction belongs to.
+    #[serde(rename = "_account")]
+    pub account: String,
+
+    /// This is the ID of provider that Akahu has retrieved this transaction from.
+    #[serde(rename = "_connection")]
+    pub connection: String,
+
+    /// The time that this pending transaction was last updated (as an ISO 8601 timestamp).
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+
+    /// The date that the transaction was posted with the account holder, as an
+    /// ISO 8601 timestamp. May change before the transaction settles.
+    pub date: chrono::DateTime<chrono::Utc>,
+
+    /// The transaction description as provided by the bank. May change before settlement.
+    pub description: String,
+
+    /// The amount of money that will be moved by this transaction.
+    #[serde(with = "rust_decimal::serde::arbitrary_precision")]
+    pub amount: rust_decimal::Decimal,
+
+    /// What sort of transaction this is.
+    #[serde(rename = "type")]
+    pub kind: TransactionKind,
+
+    /// Additional metadata about the transaction.
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub meta: Option<TransactionMeta>,
+}
+
+/// Paginated response containing a list of pending transactions.
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+pub struct PaginatedPendingTransactionResponse {
+    /// List of pending transactions in this page.
+    pub items: Vec<PendingTransaction>,
+
+    /// Pagination cursor. Use `cursor.next` to fetch the next page.
+    /// When `cursor.next` is null, you've reached the final page.
+    pub cursor: TransactionCursor,
+}
