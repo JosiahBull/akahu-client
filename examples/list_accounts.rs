@@ -43,9 +43,6 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Load .env file if it exists (silently ignore if it doesn't)
-    let _ = dotenvy::dotenv();
-
     // Parse command-line arguments
     let args = Args::parse();
 

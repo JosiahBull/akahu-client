@@ -61,9 +61,6 @@ fn parse_date(date_str: &str) -> Result<DateTime<Utc>> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Load .env file if it exists
-    let _ = dotenvy::dotenv();
-
     // Parse arguments
     let args = Args::parse();
 
