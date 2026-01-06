@@ -74,7 +74,7 @@ pub enum BankPrefix {
 
 impl BankPrefix {
     /// Get the 2-digit bank prefix as a string (e.g., "01" for ANZ).
-    pub fn as_str(&self) -> &'static str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Anz => "01",
             Self::Bnz => "02",
@@ -107,7 +107,7 @@ impl BankPrefix {
     }
 
     /// Get the common name of the bank (e.g., "ANZ", "Kiwibank").
-    pub fn bank_name(&self) -> &'static str {
+    pub const fn bank_name(&self) -> &'static str {
         match self {
             Self::Anz
             | Self::AnzNational
@@ -203,16 +203,29 @@ pub struct BankAccountNumber(String);
 
 impl BankAccountNumber {
     /// Create a new bank account number with format validation.
-    pub fn new(value: impl Into<String>) -> Result<Self, InvalidBankAccountError> {
+    pub fn new<T: Into<String>>(value: T) -> Result<Self, InvalidBankAccountError> {
         let s = value.into();
-        let validate_parts = |parts: Vec<&str>| -> Result<(), ()> {
+        let validate_parts = |parts: &[&str]| -> Result<(), ()> {
             if parts.len() != 4 {
                 return Err(());
             }
-            if BankPrefix::from_str(parts[0]).is_err() {
+            let Some(bank_code) = parts.get(0) else {
+                return Err(());
+            };
+            let Some(branch) = parts.get(1) else {
+                return Err(());
+            };
+            let Some(account) = parts.get(2) else {
+                return Err(());
+            };
+            let Some(suffix) = parts.get(3) else {
+                return Err(());
+            };
+
+            if BankPrefix::from_str(bank_code).is_err() {
                 return Err(());
             }
-            if parts[1].len() != 4 || parts[2].len() != 7 || parts[3].len() != 3 {
+            if branch.len() != 4 || account.len() != 7 || suffix.len() != 3 {
                 return Err(());
             }
             if !parts.iter().all(|p| p.chars().all(|c| c.is_ascii_digit())) {
@@ -223,7 +236,7 @@ impl BankAccountNumber {
 
         if s.contains('-') {
             let parts: Vec<&str> = s.split('-').collect();
-            if validate_parts(parts).is_err() {
+            if validate_parts(&parts).is_err() {
                 return Err(InvalidBankAccountError(s));
             }
             Ok(Self(s))
@@ -231,11 +244,25 @@ impl BankAccountNumber {
             if s.len() != 16 || !s.chars().all(|c| c.is_ascii_digit()) {
                 return Err(InvalidBankAccountError(s));
             }
-            let parts = vec![&s[0..2], &s[2..6], &s[6..13], &s[13..16]];
-            if validate_parts(parts).is_err() {
+            // Safe: we've validated the string is exactly 16 ASCII digits
+            let bank_code = s
+                .get(0..2)
+                .ok_or_else(|| InvalidBankAccountError(s.clone()))?;
+            let branch = s
+                .get(2..6)
+                .ok_or_else(|| InvalidBankAccountError(s.clone()))?;
+            let account = s
+                .get(6..13)
+                .ok_or_else(|| InvalidBankAccountError(s.clone()))?;
+            let suffix = s
+                .get(13..16)
+                .ok_or_else(|| InvalidBankAccountError(s.clone()))?;
+
+            let parts = vec![bank_code, branch, account, suffix];
+            if validate_parts(&parts).is_err() {
                 return Err(InvalidBankAccountError(s));
             }
-            let formatted = format!("{}-{}-{}-{}", &s[0..2], &s[2..6], &s[6..13], &s[13..16]);
+            let formatted = format!("{}-{}-{}-{}", bank_code, branch, account, suffix);
             Ok(Self(formatted))
         }
     }
@@ -247,22 +274,30 @@ impl BankAccountNumber {
 
     /// Returns the 2-digit bank code string (e.g., "01").
     pub fn bank_code(&self) -> &str {
-        &self.0[0..2]
+        self.0
+            .get(0..2)
+            .expect("bank code is always present in validated account number")
     }
 
     /// Returns the 4-digit branch code string (e.g., "0123").
     pub fn branch_code(&self) -> &str {
-        &self.0[3..7]
+        self.0
+            .get(3..7)
+            .expect("branch code is always present in validated account number")
     }
 
     /// Returns the 7-digit account base number string (e.g., "0012345").
     pub fn account_number(&self) -> &str {
-        &self.0[8..15]
+        self.0
+            .get(8..15)
+            .expect("account number is always present in validated account number")
     }
 
     /// Returns the 3-digit suffix string (e.g., "000").
     pub fn suffix(&self) -> &str {
-        &self.0[16..19]
+        self.0
+            .get(16..19)
+            .expect("suffix is always present in validated account number")
     }
 
     /// Returns the full string representation.
@@ -348,6 +383,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unwrap_used, reason = "Tests are allowed to unwrap")]
     fn test_extraction_integrity() {
         // Ensure that reconstructing the string from components matches the original
         let account = BankAccountNumber::new("12-3456-7890123-001").unwrap();

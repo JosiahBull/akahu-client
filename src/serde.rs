@@ -1,12 +1,9 @@
 //! A collection of serde helpers.
 
-pub(crate) mod space_separated_strings_as_vec {
+pub mod space_separated_strings_as_vec {
     use serde::{de::Deserializer, ser::Serializer};
 
-    pub(crate) fn serialize<S>(
-        value: &Option<Vec<String>>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(value: &Option<Vec<String>>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -19,7 +16,7 @@ pub(crate) mod space_separated_strings_as_vec {
         }
     }
 
-    pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
     where
         D: Deserializer<'de>,
     {

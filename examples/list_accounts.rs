@@ -6,6 +6,8 @@
 //! cargo run --example list_accounts -- --help
 //! ```
 
+#![allow(clippy::restriction, reason = "clap Parser derive macro requires this")]
+
 use akahu_client::{AkahuClient, UserToken};
 use anyhow::{Context, Result};
 use clap::Parser;

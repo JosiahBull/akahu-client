@@ -6,6 +6,8 @@
 //! cargo run --example list_transactions
 //! ```
 
+#![allow(clippy::restriction, reason = "clap Parser derive macro requires this")]
+
 use akahu_client::{AccountId, AkahuClient, UserToken};
 use anyhow::{Context, Result};
 use chrono::{DateTime, NaiveDate, Utc};

@@ -16,7 +16,7 @@ macro_rules! newtype_string {
 
         impl $name {
             /// Create a new instance
-            pub fn new(value: impl Into<String>) -> Self {
+            pub fn new<T: Into<String>>(value: T) -> Self {
                 Self(value.into())
             }
 
@@ -76,7 +76,7 @@ macro_rules! newtype_id {
             pub const PREFIX: &'static str = $prefix;
 
             /// Create a new ID, validating the prefix
-            pub fn new(value: impl Into<String>) -> Result<Self, InvalidIdError> {
+            pub fn new<T: Into<String>>(value: T) -> Result<Self, InvalidIdError> {
                 let s = value.into();
                 if !s.starts_with(Self::PREFIX) {
                     return Err(InvalidIdError {
@@ -89,7 +89,7 @@ macro_rules! newtype_id {
             }
 
             /// Create without validation (for deserialization from trusted API)
-            pub(crate) fn new_unchecked(value: impl Into<String>) -> Self {
+            pub(crate) fn new_unchecked<T: Into<String>>(value: T) -> Self {
                 Self(value.into())
             }
 
@@ -316,20 +316,20 @@ mod tests {
     #[test]
     fn test_account_id_validation() {
         // Valid account ID
-        assert!(AccountId::new("acc_123456").is_ok());
+        AccountId::new("acc_123456").unwrap();
 
         // Invalid prefix
-        assert!(AccountId::new("trans_123456").is_err());
-        assert!(AccountId::new("123456").is_err());
+        AccountId::new("trans_123456").unwrap_err();
+        AccountId::new("123456").unwrap_err();
     }
 
     #[test]
     fn test_transaction_id_validation() {
         // Valid transaction ID
-        assert!(TransactionId::new("trans_abcdef123").is_ok());
+        TransactionId::new("trans_abcdef123").unwrap();
 
         // Invalid prefix
-        assert!(TransactionId::new("acc_123456").is_err());
+        TransactionId::new("acc_123456").unwrap_err();
     }
 
     #[test]

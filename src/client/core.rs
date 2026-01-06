@@ -8,6 +8,7 @@ use reqwest::{
     header::{ACCEPT, AUTHORIZATION, HeaderMap, HeaderValue},
 };
 
+/// Custom HTTP header name for Akahu application ID
 const AKAHU_ID_HEADER: &str = "X-Akahu-Id";
 
 impl AkahuClient {

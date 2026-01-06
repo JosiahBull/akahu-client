@@ -95,4 +95,4 @@ pub enum AkahuError {
 }
 
 /// Convenience type alias for Results using AkahuError
-pub(crate) type AkahuResult<T> = std::result::Result<T, AkahuError>;
+pub type AkahuResult<T> = std::result::Result<T, AkahuError>;

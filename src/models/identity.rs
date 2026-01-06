@@ -1,3 +1,7 @@
+//! Identity verification and party information models.
+//!
+//! Types for working with identity verification, party data, and address information.
+
 use serde::{Deserialize, Serialize};
 
 use crate::{BankAccountNumber, ConnectionId, space_separated_strings_as_vec};
