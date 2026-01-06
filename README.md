@@ -3,15 +3,6 @@
 A non-offical Rust client library for the [Akahu API](https://www.akahu.nz/),
 providing access to financial data aggregation services in New Zealand.
 
-## Features
-
-- Fetch user accounts and account details
-- Retrieve transactions with pagination support
-- Access user identity and profile information
-- Type-safe API with strongly-typed models
-- Async/await support using tokio
-- Comprehensive error handling
-
 ## Installation
 
 Add this to your `Cargo.toml`:
