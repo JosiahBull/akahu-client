@@ -1,7 +1,4 @@
 //! Core helper methods for the Akahu client.
-//!
-//! This module contains internal methods for request execution, error handling,
-//! and header construction. These methods are used by all endpoint implementations.
 
 use crate::UserToken;
 
@@ -81,28 +78,6 @@ impl AkahuClient {
         headers.insert(
             AUTHORIZATION,
             HeaderValue::from_str(&format!("Bearer {}", user_token.as_str()))?,
-        );
-        headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
-        Ok(headers)
-    }
-
-    /// Build headers for app-scoped requests (HTTP Basic Auth)
-    pub(super) fn build_app_headers(&self) -> crate::error::AkahuResult<HeaderMap> {
-        let app_secret = self
-            .app_secret
-            .as_ref()
-            .ok_or(crate::error::AkahuError::MissingAppSecret)?;
-
-        let credentials = format!("{}:{}", self.app_id_token, app_secret);
-        let encoded = base64::Engine::encode(
-            &base64::engine::general_purpose::STANDARD,
-            credentials.as_bytes(),
-        );
-
-        let mut headers = HeaderMap::new();
-        headers.insert(
-            AUTHORIZATION,
-            HeaderValue::from_str(&format!("Basic {}", encoded))?,
         );
         headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
         Ok(headers)

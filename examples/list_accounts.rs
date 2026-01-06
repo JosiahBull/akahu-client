@@ -50,10 +50,7 @@ async fn main() -> Result<()> {
     let args = Args::parse();
 
     // Create the Akahu client
-    let client = AkahuClient::builder()
-        .client(reqwest::Client::new())
-        .app_id_token(args.app_token)
-        .build();
+    let client = AkahuClient::new(reqwest::Client::new(), args.app_token, None);
 
     // Convert user token to UserToken type
     let user_token = UserToken::new(args.user_token);

@@ -4,9 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    AccountId, BankAccountNumber, CategoryId, ConnectionId, Cursor, MerchantId, TransactionId,
-};
+use crate::{AccountId, BankAccountNumber, CategoryId, ConnectionId, MerchantId, TransactionId};
 
 /// A transaction is a record of money moving between two accounts. Akahu can
 /// provide transaction data from connected accounts for all bank integrations
@@ -244,30 +242,6 @@ pub struct TransactionConversion {
     /// The conversion rate applied.
     #[serde(with = "rust_decimal::serde::arbitrary_precision")]
     pub rate: rust_decimal::Decimal,
-}
-
-/// Cursor for paginating through transaction results.
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
-pub struct TransactionCursor {
-    /// Cursor value to use for fetching the next page of results.
-    pub next: Option<Cursor>,
-}
-
-/// Query parameters for filtering transactions by date range and pagination.
-#[derive(Debug, Clone, Default, bon::Builder, Serialize)]
-#[builder(on(chrono::DateTime<chrono::Utc>, into))]
-pub struct TransactionQueryParams {
-    /// Start of the time range (exclusive).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub start: Option<chrono::DateTime<chrono::Utc>>,
-
-    /// End of the time range (inclusive).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub end: Option<chrono::DateTime<chrono::Utc>>,
-
-    /// Cursor for pagination.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cursor: Option<Cursor>,
 }
 
 /// A pending transaction that has not yet been settled.

@@ -2,30 +2,13 @@
 //!
 //! This module contains methods for retrieving settled and pending transactions.
 
-use crate::{AccountId, Transaction, TransactionCursor, TransactionQueryParams, PendingTransaction, UserToken};
+use crate::{AccountId, Cursor, PaginatedResponse, PendingTransaction, Transaction, UserToken};
 
 use super::AkahuClient;
 use reqwest::Method;
 use std::collections::HashMap;
 
-// TODO: Paginated responses should potentially be generic wrappers
-#[derive(serde::Deserialize)]
-pub struct PaginatedTransactionResponse {
-    pub success: bool,
-    pub items: Vec<Transaction>,
-    pub cursor: TransactionCursor,
-}
-
-#[derive(serde::Deserialize)]
-pub struct PaginatedPendingTransactionResponse {
-    pub success: bool,
-    pub items: Vec<PendingTransaction>,
-    pub cursor: TransactionCursor,
-}
-
 impl AkahuClient {
-    // ==================== Transaction Endpoints ====================
-
     /// Get a list of the user's settled transactions within a specified time range.
     ///
     /// This endpoint returns settled transactions for all accounts that the user has connected
@@ -55,38 +38,36 @@ impl AkahuClient {
     pub async fn get_transactions(
         &self,
         user_token: &UserToken,
-        query: Option<TransactionQueryParams>,
-    ) -> crate::error::AkahuResult<PaginatedTransactionResponse> {
+        start: Option<chrono::DateTime<chrono::Utc>>,
+        end: Option<chrono::DateTime<chrono::Utc>>,
+        cursor: Option<Cursor>,
+    ) -> crate::error::AkahuResult<PaginatedResponse<Transaction>> {
         const URI: &str = "transactions";
 
         let headers = self.build_user_headers(user_token)?;
 
-        let url = if let Some(params) = query {
-            let mut query_params = HashMap::new();
+        let mut query_params = HashMap::new();
 
-            if let Some(start) = params.start {
-                query_params.insert(
-                    "start",
-                    start.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-                );
-            }
+        if let Some(start) = start {
+            query_params.insert(
+                "start",
+                start.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+            );
+        }
 
-            if let Some(end) = params.end {
-                query_params.insert(
-                    "end",
-                    end.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-                );
-            }
+        if let Some(end) = end {
+            query_params.insert(
+                "end",
+                end.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+            );
+        }
 
-            if let Some(cursor) = params.cursor {
-                query_params.insert("cursor", cursor.to_string());
-            }
+        if let Some(cursor) = cursor {
+            query_params.insert("cursor", cursor.to_string());
+        }
 
-            let url = format!("{}/{}", self.base_url, URI);
-            reqwest::Url::parse_with_params(&url, &query_params)?
-        } else {
-            reqwest::Url::parse(&format!("{}/{}", self.base_url, URI))?
-        };
+        let url =
+            reqwest::Url::parse_with_params(&format!("{}/{}", self.base_url, URI), &query_params)?;
 
         let req = self
             .client
@@ -110,44 +91,35 @@ impl AkahuClient {
     /// - They are not enriched with merchant/category data
     /// - All timestamps are in UTC
     /// - The `updated_at` field indicates when the transaction was last fetched
-    /// - Each page contains a maximum of 100 transactions
+    /// - This endpoint is not paginated and returns all pending transactions
     ///
     /// # Arguments
     ///
     /// * `user_token` - The user's access token obtained through OAuth
-    /// * `cursor` - Optional cursor for pagination (from previous response's `cursor.next`)
     ///
     /// # Returns
     ///
-    /// A paginated response containing pending transactions and a cursor for fetching more pages.
+    /// A vector containing all pending transactions.
     ///
     /// [<https://developers.akahu.nz/reference/get_transactions-pending>]
     pub async fn get_pending_transactions(
         &self,
         user_token: &UserToken,
-        cursor: Option<String>,
-    ) -> crate::error::AkahuResult<PaginatedPendingTransactionResponse> {
+    ) -> crate::error::AkahuResult<Vec<PendingTransaction>> {
         const URI: &str = "transactions/pending";
 
         let headers = self.build_user_headers(user_token)?;
 
-        let url = if let Some(cursor_val) = cursor {
-            let mut query_params = HashMap::new();
-            query_params.insert("cursor", cursor_val);
-
-            let url = format!("{}/{}", self.base_url, URI);
-            reqwest::Url::parse_with_params(&url, &query_params)?
-        } else {
-            reqwest::Url::parse(&format!("{}/{}", self.base_url, URI))?
-        };
-
         let req = self
             .client
-            .request(Method::GET, url)
+            .request(Method::GET, format!("{}/{}", self.base_url, URI))
             .headers(headers)
             .build()?;
 
-        self.execute_request(req).await
+        let response: crate::models::ListResponse<PendingTransaction> =
+            self.execute_request(req).await?;
+
+        Ok(response.items)
     }
 
     /// Get settled transactions for a specific account within a specified time range.
@@ -179,38 +151,36 @@ impl AkahuClient {
         &self,
         user_token: &UserToken,
         account_id: &AccountId,
-        query: Option<TransactionQueryParams>,
-    ) -> crate::error::AkahuResult<PaginatedTransactionResponse> {
+        start: Option<chrono::DateTime<chrono::Utc>>,
+        end: Option<chrono::DateTime<chrono::Utc>>,
+        cursor: Option<Cursor>,
+    ) -> crate::error::AkahuResult<PaginatedResponse<Transaction>> {
         let uri = format!("accounts/{}/transactions", account_id.as_str());
 
         let headers = self.build_user_headers(user_token)?;
 
-        let url = if let Some(params) = query {
-            let mut query_params = HashMap::new();
+        let mut query_params = HashMap::new();
 
-            if let Some(start) = params.start {
-                query_params.insert(
-                    "start",
-                    start.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-                );
-            }
+        if let Some(start) = start {
+            query_params.insert(
+                "start",
+                start.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+            );
+        }
 
-            if let Some(end) = params.end {
-                query_params.insert(
-                    "end",
-                    end.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-                );
-            }
+        if let Some(end) = end {
+            query_params.insert(
+                "end",
+                end.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+            );
+        }
 
-            if let Some(cursor) = params.cursor {
-                query_params.insert("cursor", cursor.to_string());
-            }
+        if let Some(cursor) = cursor {
+            query_params.insert("cursor", cursor.to_string());
+        }
 
-            let url = format!("{}/{}", self.base_url, uri);
-            reqwest::Url::parse_with_params(&url, &query_params)?
-        } else {
-            reqwest::Url::parse(&format!("{}/{}", self.base_url, uri))?
-        };
+        let url =
+            reqwest::Url::parse_with_params(&format!("{}/{}", self.base_url, uri), &query_params)?;
 
         let req = self
             .client
@@ -234,45 +204,36 @@ impl AkahuClient {
     /// - They are not enriched with merchant/category data
     /// - All timestamps are in UTC
     /// - The `updated_at` field indicates when the transaction was last fetched
-    /// - Each page contains a maximum of 100 transactions
+    /// - This endpoint is not paginated and returns all pending transactions
     ///
     /// # Arguments
     ///
     /// * `user_token` - The user's access token obtained through OAuth
     /// * `account_id` - The unique identifier for the account (prefixed with `acc_`)
-    /// * `cursor` - Optional cursor for pagination (from previous response's `cursor.next`)
     ///
     /// # Returns
     ///
-    /// A paginated response containing pending transactions and a cursor for fetching more pages.
+    /// A vector containing all pending transactions for the account.
     ///
     /// [<https://developers.akahu.nz/reference/get_accounts-id-transactions-pending>]
     pub async fn get_account_pending_transactions(
         &self,
         user_token: &UserToken,
         account_id: &AccountId,
-        cursor: Option<String>,
-    ) -> crate::error::AkahuResult<PaginatedPendingTransactionResponse> {
+    ) -> crate::error::AkahuResult<Vec<PendingTransaction>> {
         let uri = format!("accounts/{}/transactions/pending", account_id.as_str());
 
         let headers = self.build_user_headers(user_token)?;
 
-        let url = if let Some(cursor_val) = cursor {
-            let mut query_params = HashMap::new();
-            query_params.insert("cursor", cursor_val);
-
-            let url = format!("{}/{}", self.base_url, uri);
-            reqwest::Url::parse_with_params(&url, &query_params)?
-        } else {
-            reqwest::Url::parse(&format!("{}/{}", self.base_url, uri))?
-        };
-
         let req = self
             .client
-            .request(Method::GET, url)
+            .request(Method::GET, format!("{}/{}", self.base_url, uri))
             .headers(headers)
             .build()?;
 
-        self.execute_request(req).await
+        let response: crate::models::ListResponse<PendingTransaction> =
+            self.execute_request(req).await?;
+
+        Ok(response.items)
     }
 }

@@ -1,24 +1,16 @@
 mod account;
-mod auth;
-mod category;
-mod connection;
 mod identity;
 mod me;
-mod payments;
 mod transaction;
-mod transfers;
 
 pub use account::*;
-pub use auth::*;
-pub use category::*;
-pub use connection::*;
 pub use identity::*;
 pub use me::*;
-pub use payments::*;
 pub use transaction::*;
-pub use transfers::*;
 
 use serde::{Deserialize, Serialize};
+
+use crate::Cursor;
 
 // TODO: could we combine all three of these response types into one generic type?
 
@@ -75,4 +67,18 @@ pub struct ListResponse<T> {
 
     /// The list of resources.
     pub items: Vec<T>,
+}
+
+#[derive(serde::Deserialize)]
+pub struct PaginatedResponse<T> {
+    pub success: bool,
+    pub items: Vec<T>,
+    pub cursor: CursorObject,
+}
+
+/// Cursor for paginating through transaction results.
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub struct CursorObject {
+    /// Cursor value to use for fetching the next page of results.
+    pub next: Option<Cursor>,
 }

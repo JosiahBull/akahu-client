@@ -89,6 +89,9 @@ impl AkahuClient {
     /// Returns an error (400) when attempting to revoke accounts with `connection_type` of "official".
     ///
     /// [<https://developers.akahu.nz/reference/delete_accounts-id>]
+    #[deprecated(
+        note = "This endpoint is deprecated for accounts with official open banking connections. Use the Revoke Access To Authorisation endpoint instead."
+    )]
     pub async fn revoke_account_access(
         &self,
         user_token: &UserToken,

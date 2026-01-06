@@ -21,7 +21,7 @@ impl AkahuClient {
     /// # Returns
     ///
     /// The user's profile information, including:
-    /// - User ID (always prefixed with `user_`)
+    /// - User ID
     /// - Account creation timestamp
     /// - First name (if available)
     /// - Last name (if available)

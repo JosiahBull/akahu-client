@@ -2,14 +2,12 @@
 //!
 //! This module contains methods for refreshing account data.
 
-use crate::{AccountId, UserToken};
+use crate::UserToken;
 
 use super::AkahuClient;
 use reqwest::Method;
 
 impl AkahuClient {
-    // ==================== Data Refresh Endpoints ====================
-
     /// Refresh all accounts connected to your application.
     ///
     /// This endpoint initiates an on-demand data refresh across all accounts. Account data
@@ -74,12 +72,12 @@ impl AkahuClient {
     /// Returns `Ok(())` on successful refresh initiation.
     ///
     /// [<https://developers.akahu.nz/reference/post_refresh-id>]
-    pub async fn refresh_account_or_connection(
+    pub async fn refresh_account_or_connection<Id: AsRef<str>>(
         &self,
         user_token: &UserToken,
-        id: &str,
+        id: Id,
     ) -> crate::error::AkahuResult<()> {
-        let uri = format!("refresh/{}", id);
+        let uri = format!("refresh/{}", id.as_ref());
 
         let headers = self.build_user_headers(user_token)?;
 
