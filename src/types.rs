@@ -153,8 +153,11 @@ macro_rules! newtype_id {
 #[derive(Debug, Clone, thiserror::Error)]
 #[error("Invalid {type_name}: expected prefix '{expected_prefix}', got '{actual_value}'")]
 pub struct InvalidIdError {
+    /// The name of the ID type (e.g., "AccountId", "TransactionId")
     pub type_name: &'static str,
+    /// The expected prefix for this ID type (e.g., "acc_", "trans_")
     pub expected_prefix: &'static str,
+    /// The actual value that was provided
     pub actual_value: String,
 }
 

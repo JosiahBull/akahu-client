@@ -1,3 +1,5 @@
+//! Akahu API data models and response types.
+
 mod account;
 mod identity;
 mod me;
@@ -19,7 +21,9 @@ use crate::Cursor;
 /// All API errors follow this format with a success flag and message field.
 #[derive(Debug, Deserialize)]
 pub struct ErrorResponse {
+    /// Always false for error responses
     pub success: bool,
+    /// Error message from the API
     pub message: String,
 }
 
@@ -69,10 +73,32 @@ pub struct ListResponse<T> {
     pub items: Vec<T>,
 }
 
-#[derive(serde::Deserialize)]
+/// Standard API response wrapper for paginated items.
+///
+/// Used by endpoints that support cursor-based pagination, such as transaction listings.
+/// The cursor object contains a `next` field that can be used to fetch the next page.
+///
+/// # Example JSON
+/// ```json
+/// {
+///   "success": true,
+///   "items": [...],
+///   "cursor": {
+///     "next": "cursor_token..."
+///   }
+/// }
+/// ```
+///
+/// [<https://developers.akahu.nz/docs/response-formatting>]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct PaginatedResponse<T> {
+    /// Indicates if the request was successful.
     pub success: bool,
+
+    /// The list of resources for this page.
     pub items: Vec<T>,
+
+    /// Cursor information for pagination.
     pub cursor: CursorObject,
 }
 

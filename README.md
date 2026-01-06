@@ -53,6 +53,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+## Validation
+
+Note that I only use this in a very limited context, mostly for accounts/transactions. If you
+need APIs that I haven't tested please validate them yourself and open issues/PRs for any problems
+that you encounter.
+
+Some APIs I have not bothered to port over - but I would welcome PRs or requests.
+
 ## License
 
 Licensed under either of:

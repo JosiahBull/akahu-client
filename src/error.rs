@@ -6,31 +6,56 @@ pub enum AkahuError {
     // API-level errors (from Akahu responses)
     /// Bad request - invalid request parameters
     #[error("Bad request: {message}")]
-    BadRequest { message: String, status: u16 },
+    BadRequest {
+        /// Error message from the API
+        message: String,
+        /// HTTP status code (400)
+        status: u16,
+    },
 
     /// Unauthorized - invalid or revoked authentication credentials
     #[error("Unauthorized: {message}")]
-    Unauthorized { message: String },
+    Unauthorized {
+        /// Error message from the API
+        message: String,
+    },
 
     /// Forbidden - insufficient permissions or missing required headers
     #[error("Forbidden: {message}")]
-    Forbidden { message: String },
+    Forbidden {
+        /// Error message from the API
+        message: String,
+    },
 
     /// Not found - resource doesn't exist or is inaccessible
     #[error("Not found: {message}")]
-    NotFound { message: String },
+    NotFound {
+        /// Error message from the API
+        message: String,
+    },
 
     /// Rate limited - too many requests
     #[error("Rate limited: {message}")]
-    RateLimited { message: String },
+    RateLimited {
+        /// Error message from the API
+        message: String,
+    },
 
     /// Internal server error - system-level failure
     #[error("Internal server error: {message}")]
-    InternalServerError { message: String },
+    InternalServerError {
+        /// Error message from the API
+        message: String,
+    },
 
     /// Generic API error with status code and message
     #[error("API error {status}: {message}")]
-    ApiError { status: u16, message: String },
+    ApiError {
+        /// HTTP status code
+        status: u16,
+        /// Error message from the API
+        message: String,
+    },
 
     // Client-level errors
     /// Network error from reqwest
@@ -62,7 +87,9 @@ pub enum AkahuError {
     /// OAuth error response (follows OAuth2 spec)
     #[error("OAuth error: {error}{}", .error_description.as_ref().map(|d| format!(" - {}", d)).unwrap_or_default())]
     OAuth {
+        /// OAuth error code (e.g., "invalid_grant")
         error: String,
+        /// Optional human-readable error description
         error_description: Option<String>,
     },
 }

@@ -1,3 +1,5 @@
+//! New Zealand bank account number parsing and validation.
+
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::str::FromStr;
@@ -8,39 +10,70 @@ use std::str::FromStr;
 pub struct InvalidBankAccountError(pub String);
 
 /// Represents the specific Bank/Financial Institution based on the 2-digit prefix.
+///
+/// Each bank in New Zealand uses a specific 2-digit prefix in their account numbers.
+/// This enum identifies the bank from the prefix.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum BankPrefix {
+    /// ANZ (prefix: 01)
     Anz = 1,
+    /// Bank of New Zealand (prefix: 02)
     Bnz = 2,
+    /// Westpac (prefix: 03)
     Westpac = 3,
+    /// ANZ Wise (prefix: 04)
     AnzWise = 4,
+    /// China Construction Bank (prefix: 05)
     ChinaConstruction = 5,
+    /// ANZ National (prefix: 06)
     AnzNational = 6,
+    /// NAB (prefix: 08)
     Nab = 8,
+    /// ICBC (prefix: 10)
     Icbc = 10,
+    /// ANZ PostBank (prefix: 11)
     AnzPostBank = 11,
+    /// ASB (prefix: 12)
     Asb = 12,
+    /// Westpac Trust (prefix: 13)
     WestpacTrust = 13,
+    /// Westpac Otago (prefix: 14)
     WestpacOtago = 14,
+    /// TSB (prefix: 15)
     Tsb = 15,
+    /// Westpac Southland (prefix: 16)
     WestpacSouthland = 16,
+    /// Westpac Bay of Plenty (prefix: 17)
     WestpacBop = 17,
+    /// Westpac Canterbury (prefix: 18)
     WestpacCanterbury = 18,
+    /// Westpac Waikato (prefix: 19)
     WestpacWaikato = 19,
+    /// Westpac Wellington (prefix: 20)
     WestpacWellington = 20,
+    /// Westpac Westland (prefix: 21)
     WestpacWestland = 21,
+    /// Westpac South Canterbury (prefix: 22)
     WestpacSouthCant = 22,
+    /// Westpac Auckland (prefix: 23)
     WestpacAuckland = 23,
+    /// ASB Partner (prefix: 24)
     AsbPartner = 24,
+    /// ANZ Partner (prefix: 25)
     AnzPartner = 25,
+    /// HSBC (prefix: 30)
     Hsbc = 30,
+    /// Citibank (prefix: 31)
     Citibank = 31,
+    /// Kiwibank (prefix: 38)
     Kiwibank = 38,
+    /// Bank of China (prefix: 88)
     BankOfChina = 88,
 }
 
 impl BankPrefix {
+    /// Get the 2-digit bank prefix as a string (e.g., "01" for ANZ).
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Anz => "01",
@@ -73,6 +106,7 @@ impl BankPrefix {
         }
     }
 
+    /// Get the common name of the bank (e.g., "ANZ", "Kiwibank").
     pub fn bank_name(&self) -> &'static str {
         match self {
             Self::Anz
@@ -152,6 +186,17 @@ impl TryFrom<u8> for BankPrefix {
     }
 }
 
+/// A validated New Zealand bank account number.
+///
+/// This type ensures the account number follows the standard NZ format: XX-XXXX-XXXXXXX-XXX
+/// where:
+/// - XX: 2-digit bank code
+/// - XXXX: 4-digit branch code
+/// - XXXXXXX: 7-digit account number
+/// - XXX: 3-digit suffix
+///
+/// The account number is always stored in formatted form with hyphens, even if provided
+/// without them during construction.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct BankAccountNumber(String);

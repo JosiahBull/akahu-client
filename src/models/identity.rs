@@ -66,21 +66,27 @@ pub enum AddressKind {
 /// Structured address components
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AddressComponents {
+    /// Street address
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub street: Option<String>,
 
+    /// Suburb name
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub suburb: Option<String>,
 
+    /// City name
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub city: Option<String>,
 
+    /// Region or state
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub region: Option<String>,
 
+    /// Postal code
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub postal_code: Option<String>,
 
+    /// Country name
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub country: Option<String>,
 }

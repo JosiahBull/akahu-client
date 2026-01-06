@@ -148,29 +148,43 @@ pub enum TransactionKind {
 /// [<https://developers.akahu.nz/docs/the-transaction-model#enriched-transaction-data>]
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct EnrichedTransactionData {
+    /// Category information for this transaction
     pub category: TransactionCategory,
+    /// Merchant information for this transaction
     pub merchant: TransactionMerchant,
 }
 
+/// Transaction category information from Akahu enrichment.
+///
+/// Categories are based on the New Zealand Financial Category Codes (NZFCC) standard.
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct TransactionCategory {
+    /// Unique category identifier
     #[serde(rename = "_id")]
     pub id: CategoryId,
+    /// NZFCC category code
     pub name: nzfcc::NzfccCode,
+    /// Category groupings
     pub groups: TransactionGroups,
 }
 
+/// Category groupings for different classification systems.
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct TransactionGroups {
+    /// Personal finance category group
     pub personal_finance: PersonalFinanceGroup,
+    /// Other category groupings (future extension)
     #[serde(flatten)]
     pub other_groups: Option<std::collections::HashMap<String, serde_json::Value>>,
 }
 
+/// Personal finance category group.
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct PersonalFinanceGroup {
+    /// Category group identifier
     #[serde(rename = "_id")]
     pub id: CategoryId,
+    /// Category group name
     pub name: nzfcc::CategoryGroup,
 }
 
