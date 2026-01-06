@@ -310,6 +310,10 @@ newtype_string!(
 // ============================================================================
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    reason = "Tests need to unwrap to verify correctness"
+)]
 mod tests {
     use super::*;
 

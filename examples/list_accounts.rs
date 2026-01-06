@@ -6,8 +6,6 @@
 //! cargo run --example list_accounts -- --help
 //! ```
 
-#![allow(clippy::restriction, reason = "clap Parser derive macro requires this")]
-
 use akahu_client::{AkahuClient, UserToken};
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -65,7 +63,7 @@ async fn main() -> Result<()> {
     let accounts = response.items;
 
     // Filter if requested (currently a placeholder - adjust based on your needs)
-    let accounts: Vec<_> = if args.active_only { accounts } else { accounts };
+    // let accounts: Vec<_> = if args.active_only { accounts } else { accounts };
 
     if accounts.is_empty() {
         println!("No accounts found.");

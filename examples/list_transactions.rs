@@ -6,8 +6,6 @@
 //! cargo run --example list_transactions
 //! ```
 
-#![allow(clippy::restriction, reason = "clap Parser derive macro requires this")]
-
 use akahu_client::{AccountId, AkahuClient, UserToken};
 use anyhow::{Context, Result};
 use chrono::{DateTime, NaiveDate, Utc};
@@ -105,7 +103,7 @@ async fn main() -> Result<()> {
 
         let transaction_count = response.items.len();
         all_transactions.extend(response.items);
-        page_count += 1;
+        page_count = page_count.saturating_add(1);
 
         println!(
             "  Fetched page {}: {} transactions",
@@ -138,7 +136,7 @@ async fn main() -> Result<()> {
             println!("Date,Description,Amount,Balance,Type");
             for tx in &all_transactions {
                 println!(
-                    "{},{},{},{},{}",
+                    "{},{},{},{},{:?}",
                     tx.date.format("%Y-%m-%d"),
                     tx.description.replace(',', ";"), // Escape commas
                     tx.amount,
@@ -146,7 +144,7 @@ async fn main() -> Result<()> {
                         .as_ref()
                         .map(|b| b.to_string())
                         .unwrap_or_default(),
-                    format!("{:?}", tx.kind)
+                    tx.kind
                 );
             }
         }
