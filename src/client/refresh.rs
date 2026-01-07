@@ -2,12 +2,18 @@
 //!
 //! This module contains methods for refreshing account data.
 
+use crate::http::{HttpService, ServiceExt};
 use crate::UserToken;
 
 use super::AkahuClient;
-use reqwest::Method;
+use http::Method;
 
-impl AkahuClient {
+impl<H> AkahuClient<H>
+where
+    H: HttpService,
+    H::Future: Send,
+    H::Error: std::error::Error + Send + Sync + 'static,
+{
     /// Refresh all accounts connected to your application.
     ///
     /// This endpoint initiates an on-demand data refresh across all accounts. Account data
@@ -32,19 +38,27 @@ impl AkahuClient {
         const URI: &str = "refresh";
 
         let headers = self.build_user_headers(user_token)?;
+        let url = format!("{}/{}", self.base_url, URI);
 
-        let req = self
+        let req = http::Request::builder()
+            .method(Method::POST)
+            .uri(url)
+            .body(vec![])?;
+
+        let (mut parts, body) = req.into_parts();
+        parts.headers = headers;
+        let req = http::Request::from_parts(parts, body);
+
+        let res = self
             .client
-            .request(Method::POST, format!("{}/{}", self.base_url, URI))
-            .headers(headers)
-            .build()?;
-
-        let res = self.client.execute(req).await?;
+            .call_cloned(req)
+            .await
+            .map_err(|e| crate::error::AkahuError::Http(Box::new(e)))?;
 
         if res.status().is_success() {
             Ok(())
         } else {
-            self.handle_error_response(res).await
+            self.handle_error_response(res)
         }
     }
 
@@ -78,21 +92,28 @@ impl AkahuClient {
         id: Id,
     ) -> crate::error::AkahuResult<()> {
         let uri = format!("refresh/{}", id.as_ref());
-
         let headers = self.build_user_headers(user_token)?;
+        let url = format!("{}/{}", self.base_url, uri);
 
-        let req = self
+        let req = http::Request::builder()
+            .method(Method::POST)
+            .uri(url)
+            .body(vec![])?;
+
+        let (mut parts, body) = req.into_parts();
+        parts.headers = headers;
+        let req = http::Request::from_parts(parts, body);
+
+        let res = self
             .client
-            .request(Method::POST, format!("{}/{}", self.base_url, uri))
-            .headers(headers)
-            .build()?;
-
-        let res = self.client.execute(req).await?;
+            .call_cloned(req)
+            .await
+            .map_err(|e| crate::error::AkahuError::Http(Box::new(e)))?;
 
         if res.status().is_success() {
             Ok(())
         } else {
-            self.handle_error_response(res).await
+            self.handle_error_response(res)
         }
     }
 }

@@ -15,15 +15,21 @@
 //! ## Quick Start
 //!
 //! ```no_run
-//! use akahu_client::{AkahuClient, UserToken};
+//! use akahu_client::{AkahuClient, ReqwestClient, UserToken};
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create an HTTP client (using reqwest)
+//! let http_client = ReqwestClient::new(reqwest::Client::new());
+//!
 //! // Create a client with your app token
 //! let client = AkahuClient::new(
-//!     reqwest::Client::new(),
+//!     http_client,
 //!     "app_token_...".to_string(),
 //!     None
 //! );
+//!
+//! // Or use the convenience method when reqwest feature is enabled
+//! let client = AkahuClient::with_reqwest("app_token_...");
 //!
 //! // Create a user token from OAuth flow
 //! let user_token = UserToken::new("user_token_...".to_string());
@@ -53,6 +59,7 @@
 mod bank_account_number;
 mod client;
 mod error;
+pub mod http;
 mod models;
 mod serde;
 mod types;
@@ -60,6 +67,13 @@ mod types;
 pub use bank_account_number::*;
 pub use client::AkahuClient;
 pub use error::AkahuError;
+#[cfg(feature = "reqwest")]
+pub use http::ReqwestClient;
 pub use models::*;
 pub(crate) use serde::*;
 pub use types::*;
+
+// Rexport important types from external crates.
+pub use chrono::{DateTime, Utc};
+pub use nzfcc::*;
+pub use url::Url;

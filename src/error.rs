@@ -58,13 +58,13 @@ pub enum AkahuError {
     },
 
     // Client-level errors
-    /// Network error from reqwest
-    #[error("Network error: {0}")]
-    Network(#[from] reqwest::Error),
+    /// HTTP client error
+    #[error("HTTP error: {0}")]
+    Http(Box<dyn std::error::Error + Send + Sync>),
 
     /// Invalid header value
-    #[error("Invalid header value: {0}")]
-    InvalidHeaderValue(#[from] reqwest::header::InvalidHeaderValue),
+    #[error("Invalid header: {0}")]
+    InvalidHeader(String),
 
     /// URL parse error
     #[error("URL parse error: {0}")]
@@ -96,3 +96,25 @@ pub enum AkahuError {
 
 /// Convenience type alias for Results using AkahuError
 pub type AkahuResult<T> = std::result::Result<T, AkahuError>;
+
+// Feature-gated conversions for reqwest
+#[cfg(feature = "reqwest")]
+impl From<reqwest::Error> for AkahuError {
+    fn from(e: reqwest::Error) -> Self {
+        Self::Http(Box::new(e))
+    }
+}
+
+#[cfg(feature = "reqwest")]
+impl From<reqwest::header::InvalidHeaderValue> for AkahuError {
+    fn from(e: reqwest::header::InvalidHeaderValue) -> Self {
+        Self::InvalidHeader(e.to_string())
+    }
+}
+
+// Conversion for http crate errors
+impl From<http::Error> for AkahuError {
+    fn from(e: http::Error) -> Self {
+        Self::Http(Box::new(e))
+    }
+}

@@ -2,13 +2,18 @@
 //!
 //! This module contains methods for retrieving settled and pending transactions.
 
+use crate::http::HttpService;
 use crate::{AccountId, Cursor, PaginatedResponse, PendingTransaction, Transaction, UserToken};
 
 use super::AkahuClient;
-use reqwest::Method;
-use std::collections::HashMap;
+use http::Method;
 
-impl AkahuClient {
+impl<H> AkahuClient<H>
+where
+    H: HttpService,
+    H::Future: Send,
+    H::Error: std::error::Error + Send + Sync + 'static,
+{
     /// Get a list of the user's settled transactions within a specified time range.
     ///
     /// This endpoint returns settled transactions for all accounts that the user has connected
@@ -46,34 +51,36 @@ impl AkahuClient {
 
         let headers = self.build_user_headers(user_token)?;
 
-        let mut query_params = HashMap::new();
+        let mut query_params = Vec::new();
 
         if let Some(start) = start {
-            query_params.insert(
+            query_params.push((
                 "start",
                 start.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-            );
+            ));
         }
 
         if let Some(end) = end {
-            query_params.insert(
+            query_params.push((
                 "end",
                 end.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-            );
+            ));
         }
 
         if let Some(cursor) = cursor {
-            query_params.insert("cursor", cursor.to_string());
+            query_params.push(("cursor", cursor.to_string()));
         }
 
-        let url =
-            reqwest::Url::parse_with_params(&format!("{}/{}", self.base_url, URI), &query_params)?;
+        let url = crate::http::build_url(&self.base_url, URI, &query_params);
 
-        let req = self
-            .client
-            .request(Method::GET, url)
-            .headers(headers)
-            .build()?;
+        let req = http::Request::builder()
+            .method(Method::GET)
+            .uri(url)
+            .body(vec![])?;
+
+        let (mut parts, body) = req.into_parts();
+        parts.headers = headers;
+        let req = http::Request::from_parts(parts, body);
 
         self.execute_request(req).await
     }
@@ -109,12 +116,16 @@ impl AkahuClient {
         const URI: &str = "transactions/pending";
 
         let headers = self.build_user_headers(user_token)?;
+        let url = format!("{}/{}", self.base_url, URI);
 
-        let req = self
-            .client
-            .request(Method::GET, format!("{}/{}", self.base_url, URI))
-            .headers(headers)
-            .build()?;
+        let req = http::Request::builder()
+            .method(Method::GET)
+            .uri(url)
+            .body(vec![])?;
+
+        let (mut parts, body) = req.into_parts();
+        parts.headers = headers;
+        let req = http::Request::from_parts(parts, body);
 
         let response: crate::models::ListResponse<PendingTransaction> =
             self.execute_request(req).await?;
@@ -159,34 +170,36 @@ impl AkahuClient {
 
         let headers = self.build_user_headers(user_token)?;
 
-        let mut query_params = HashMap::new();
+        let mut query_params = Vec::new();
 
         if let Some(start) = start {
-            query_params.insert(
+            query_params.push((
                 "start",
                 start.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-            );
+            ));
         }
 
         if let Some(end) = end {
-            query_params.insert(
+            query_params.push((
                 "end",
                 end.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-            );
+            ));
         }
 
         if let Some(cursor) = cursor {
-            query_params.insert("cursor", cursor.to_string());
+            query_params.push(("cursor", cursor.to_string()));
         }
 
-        let url =
-            reqwest::Url::parse_with_params(&format!("{}/{}", self.base_url, uri), &query_params)?;
+        let url = crate::http::build_url(&self.base_url, &uri, &query_params);
 
-        let req = self
-            .client
-            .request(Method::GET, url)
-            .headers(headers)
-            .build()?;
+        let req = http::Request::builder()
+            .method(Method::GET)
+            .uri(url)
+            .body(vec![])?;
+
+        let (mut parts, body) = req.into_parts();
+        parts.headers = headers;
+        let req = http::Request::from_parts(parts, body);
 
         self.execute_request(req).await
     }
@@ -222,14 +235,17 @@ impl AkahuClient {
         account_id: &AccountId,
     ) -> crate::error::AkahuResult<Vec<PendingTransaction>> {
         let uri = format!("accounts/{}/transactions/pending", account_id.as_str());
-
         let headers = self.build_user_headers(user_token)?;
+        let url = format!("{}/{}", self.base_url, uri);
 
-        let req = self
-            .client
-            .request(Method::GET, format!("{}/{}", self.base_url, uri))
-            .headers(headers)
-            .build()?;
+        let req = http::Request::builder()
+            .method(Method::GET)
+            .uri(url)
+            .body(vec![])?;
+
+        let (mut parts, body) = req.into_parts();
+        parts.headers = headers;
+        let req = http::Request::from_parts(parts, body);
 
         let response: crate::models::ListResponse<PendingTransaction> =
             self.execute_request(req).await?;

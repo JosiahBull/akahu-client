@@ -2,12 +2,18 @@
 //!
 //! This module contains methods for managing user accounts connected to your Akahu application.
 
+use crate::http::{HttpService, ServiceExt};
 use crate::{AccountId, UserToken};
 
 use super::AkahuClient;
-use reqwest::Method;
+use http::Method;
 
-impl AkahuClient {
+impl<H> AkahuClient<H>
+where
+    H: HttpService,
+    H::Future: Send,
+    H::Error: std::error::Error + Send + Sync + 'static,
+{
     /// Get a list of all accounts that the user has connected to your application.
     ///
     /// # Arguments
@@ -28,12 +34,16 @@ impl AkahuClient {
         const URI: &str = "accounts";
 
         let headers = self.build_user_headers(user_token)?;
+        let url = format!("{}/{}", self.base_url, URI);
 
-        let req = self
-            .client
-            .request(Method::GET, format!("{}/{}", self.base_url, URI))
-            .headers(headers)
-            .build()?;
+        let req = http::Request::builder()
+            .method(Method::GET)
+            .uri(url)
+            .body(vec![])?;
+
+        let (mut parts, body) = req.into_parts();
+        parts.headers = headers;
+        let req = http::Request::from_parts(parts, body);
 
         self.execute_request(req).await
     }
@@ -58,14 +68,17 @@ impl AkahuClient {
         account_id: &AccountId,
     ) -> crate::error::AkahuResult<crate::models::ItemResponse<crate::models::Account>> {
         let uri = format!("accounts/{}", account_id.as_str());
-
         let headers = self.build_user_headers(user_token)?;
+        let url = format!("{}/{}", self.base_url, uri);
 
-        let req = self
-            .client
-            .request(Method::GET, format!("{}/{}", self.base_url, uri))
-            .headers(headers)
-            .build()?;
+        let req = http::Request::builder()
+            .method(Method::GET)
+            .uri(url)
+            .body(vec![])?;
+
+        let (mut parts, body) = req.into_parts();
+        parts.headers = headers;
+        let req = http::Request::from_parts(parts, body);
 
         self.execute_request(req).await
     }
@@ -98,22 +111,29 @@ impl AkahuClient {
         account_id: &AccountId,
     ) -> crate::error::AkahuResult<()> {
         let uri = format!("accounts/{}", account_id.as_str());
-
         let headers = self.build_user_headers(user_token)?;
+        let url = format!("{}/{}", self.base_url, uri);
 
-        let req = self
-            .client
-            .request(Method::DELETE, format!("{}/{}", self.base_url, uri))
-            .headers(headers)
-            .build()?;
+        let req = http::Request::builder()
+            .method(Method::DELETE)
+            .uri(url)
+            .body(vec![])?;
+
+        let (mut parts, body) = req.into_parts();
+        parts.headers = headers;
+        let req = http::Request::from_parts(parts, body);
 
         // This endpoint returns empty response on success
-        let res = self.client.execute(req).await?;
+        let res = self
+            .client
+            .call_cloned(req)
+            .await
+            .map_err(|e| crate::error::AkahuError::Http(Box::new(e)))?;
 
         if res.status().is_success() {
             Ok(())
         } else {
-            self.handle_error_response(res).await
+            self.handle_error_response(res)
         }
     }
 }

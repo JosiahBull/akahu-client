@@ -6,7 +6,7 @@
 //! cargo run --example list_accounts -- --help
 //! ```
 
-use akahu_client::{AkahuClient, UserToken};
+use akahu_client::{AkahuClient, ReqwestClient, UserToken};
 use anyhow::{Context, Result};
 use clap::Parser;
 
@@ -46,8 +46,9 @@ async fn main() -> Result<()> {
     // Parse command-line arguments
     let args = Args::parse();
 
-    // Create the Akahu client
-    let client = AkahuClient::new(reqwest::Client::new(), args.app_token, None);
+    // Create the Akahu client with reqwest HTTP client
+    let http_client = ReqwestClient::new(reqwest::Client::new());
+    let client = AkahuClient::new(http_client, args.app_token, None);
 
     // Convert user token to UserToken type
     let user_token = UserToken::new(args.user_token);

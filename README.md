@@ -15,16 +15,22 @@ akahu-client = "0.1.0"
 ## Quick Start
 
 ```rust
-use akahu_client::{AkahuClient, UserToken};
+use akahu_client::{AkahuClient, ReqwestClient, UserToken};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create an HTTP client (using reqwest - enabled by default)
+    let http_client = ReqwestClient::new(reqwest::Client::new());
+
     // Create a client with your app token
     let client = AkahuClient::new(
-        reqwest::Client::new(),
+        http_client,
         "app_token_...".to_string(),
         None
     );
+
+    // Or use the convenience method
+    let client = AkahuClient::with_reqwest("app_token_...");
 
     // Create a user token from OAuth flow
     let user_token = UserToken::new("user_token_...".to_string());
@@ -42,6 +48,68 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+```
+
+## Features
+
+- **Tower Service Integration**: Uses the standard `tower::Service` trait for HTTP client abstraction
+- **Default reqwest Support**: Includes built-in support for reqwest (enabled by default)
+- **Type-safe API**: Strongly-typed models for all API responses
+- **Async/await**: Built on tokio for efficient async operations
+- **Tower Middleware**: Compatible with the entire tower middleware ecosystem
+
+### Using a Custom HTTP Client
+
+You can use any HTTP library by implementing `tower::Service`:
+
+```rust
+use tower::Service;
+use std::task::{Context, Poll};
+use http::{Request, Response};
+
+#[derive(Clone)]
+struct MyHttpClient;
+
+impl Service<Request<Vec<u8>>> for MyHttpClient {
+    type Response = Response<Vec<u8>>;
+    type Error = MyError;
+    type Future = /* your future type */;
+
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, req: Request<Vec<u8>>) -> Self::Future {
+        // Your HTTP client implementation
+    }
+}
+
+let client = AkahuClient::new(MyHttpClient, "app_token_...", None);
+```
+
+The library uses the standard `tower::Service` trait, giving you full access to tower's middleware ecosystem for features like retries, rate limiting, timeouts, and more.
+
+### Feature Flags
+
+- `reqwest` (default): Enables the reqwest HTTP client implementation
+
+To disable the reqwest feature and use your own HTTP client:
+
+```toml
+[dependencies]
+akahu-client = { version = "0.1.0", default-features = false }
+tower = "0.5"  # Required for implementing Service
+http = "1.1"   # Required for HTTP types
+```
+
+When the `reqwest` feature is disabled, you must explicitly specify the HTTP client type:
+
+```rust
+// With reqwest enabled (default):
+let client = AkahuClient::with_reqwest("app_token_...");
+
+// Without reqwest - must specify type:
+let client: AkahuClient<MyHttpClient> = AkahuClient::new(MyHttpClient::new(), "app_token_...", None);
 ```
 
 ## Validation

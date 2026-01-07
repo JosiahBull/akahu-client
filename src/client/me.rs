@@ -2,12 +2,18 @@
 //!
 //! This module contains methods for retrieving authenticated user information.
 
+use crate::http::HttpService;
 use crate::{ItemResponse, User, UserToken};
 
 use super::AkahuClient;
-use reqwest::Method;
+use http::Method;
 
-impl AkahuClient {
+impl<H> AkahuClient<H>
+where
+    H: HttpService,
+    H::Future: Send,
+    H::Error: std::error::Error + Send + Sync + 'static,
+{
     /// Get the authenticated user's profile information.
     ///
     /// This endpoint retrieves information about the user who authorized your application,
@@ -41,12 +47,16 @@ impl AkahuClient {
         const URI: &str = "me";
 
         let headers = self.build_user_headers(user_token)?;
+        let url = format!("{}/{}", self.base_url, URI);
 
-        let req = self
-            .client
-            .request(Method::GET, format!("{}/{}", self.base_url, URI))
-            .headers(headers)
-            .build()?;
+        let req = http::Request::builder()
+            .method(Method::GET)
+            .uri(url)
+            .body(vec![])?;
+
+        let (mut parts, body) = req.into_parts();
+        parts.headers = headers;
+        let req = http::Request::from_parts(parts, body);
 
         let user_response: ItemResponse<User> = self.execute_request(req).await?;
 
