@@ -38,7 +38,16 @@
 //! cargo run --example accounts revoke --account-id acc_123...
 //! ```
 
-#![allow(deprecated)]
+#![allow(
+    clippy::all,
+    clippy::pedantic,
+    deprecated,
+    clippy::unwrap_used,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::string_slice,
+    reason = "Don't care about lints in examples."
+)]
 
 use akahu_client::{AccountId, AkahuClient, UserToken};
 use anyhow::{Context, Result};

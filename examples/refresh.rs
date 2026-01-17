@@ -26,6 +26,16 @@
 //! cargo run --example refresh account --id conn_123...
 //! ```
 
+#![allow(
+    clippy::all,
+    clippy::unwrap_used,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::string_slice,
+    clippy::else_if_without_else,
+    reason = "Don't care about lints in examples."
+)]
+
 use akahu_client::{AkahuClient, UserToken};
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};

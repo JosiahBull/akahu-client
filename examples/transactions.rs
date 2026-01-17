@@ -34,6 +34,16 @@
 //! cargo run --example transactions list --format csv > transactions.csv
 //! ```
 
+#![allow(
+    clippy::all,
+    clippy::pedantic,
+    clippy::unwrap_used,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::string_slice,
+    reason = "Don't care about lints in examples."
+)]
+
 use akahu_client::{AccountId, AkahuClient, UserToken};
 use anyhow::{Context, Result};
 use chrono::{DateTime, NaiveDate, Utc};
