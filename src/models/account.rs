@@ -161,6 +161,52 @@ pub enum Active {
     Inactive,
 }
 
+impl Active {
+    /// Get the active status as a string slice.
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Active => "ACTIVE",
+            Self::Inactive => "INACTIVE",
+        }
+    }
+
+    /// Get the active status as bytes.
+    pub const fn as_bytes(&self) -> &'static [u8] {
+        self.as_str().as_bytes()
+    }
+}
+
+impl std::str::FromStr for Active {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "ACTIVE" => Ok(Self::Active),
+            "INACTIVE" => Ok(Self::Inactive),
+            _ => Err(()),
+        }
+    }
+}
+
+impl std::convert::TryFrom<String> for Active {
+    type Error = ();
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+impl std::convert::TryFrom<&str> for Active {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+impl std::fmt::Display for Active {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
 /// This is a less defined part of our API that lets us expose data that may be
 /// specific to certain account types or financial institutions. An investment
 /// provider, for example, may expose a breakdown of investment results.
@@ -416,6 +462,70 @@ pub enum BankAccountKind {
     Wallet,
 }
 
+impl BankAccountKind {
+    /// Get the bank account kind as a string slice.
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Checking => "CHECKING",
+            Self::Savings => "SAVINGS",
+            Self::CreditCard => "CREDITCARD",
+            Self::Loan => "LOAN",
+            Self::Kiwisaver => "KIWISAVER",
+            Self::Investment => "INVESTMENT",
+            Self::TermDeposit => "TERMDEPOSIT",
+            Self::Foreign => "FOREIGN",
+            Self::Tax => "TAX",
+            Self::Rewards => "REWARDS",
+            Self::Wallet => "WALLET",
+        }
+    }
+
+    /// Get the bank account kind as bytes.
+    pub const fn as_bytes(&self) -> &'static [u8] {
+        self.as_str().as_bytes()
+    }
+}
+
+impl std::str::FromStr for BankAccountKind {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "CHECKING" => Ok(Self::Checking),
+            "SAVINGS" => Ok(Self::Savings),
+            "CREDITCARD" => Ok(Self::CreditCard),
+            "LOAN" => Ok(Self::Loan),
+            "KIWISAVER" => Ok(Self::Kiwisaver),
+            "INVESTMENT" => Ok(Self::Investment),
+            "TERMDEPOSIT" => Ok(Self::TermDeposit),
+            "FOREIGN" => Ok(Self::Foreign),
+            "TAX" => Ok(Self::Tax),
+            "REWARDS" => Ok(Self::Rewards),
+            "WALLET" => Ok(Self::Wallet),
+            _ => Err(()),
+        }
+    }
+}
+
+impl std::convert::TryFrom<String> for BankAccountKind {
+    type Error = ();
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+impl std::convert::TryFrom<&str> for BankAccountKind {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+impl std::fmt::Display for BankAccountKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
 /// The list of attributes indicates what abilities an account has.
 ///
 /// [<https://developers.akahu.nz/docs/the-account-model#attributes>]
@@ -434,4 +544,56 @@ pub enum Attribute {
     PaymentTo,
     /// This account can initiate payments to another bank account.
     PaymentFrom,
+}
+
+impl Attribute {
+    /// Get the attribute as a string slice.
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Transactions => "TRANSACTIONS",
+            Self::TransferTo => "TRANSFER_TO",
+            Self::TransferFrom => "TRANSFER_FROM",
+            Self::PaymentTo => "PAYMENT_TO",
+            Self::PaymentFrom => "PAYMENT_FROM",
+        }
+    }
+
+    /// Get the attribute as bytes.
+    pub const fn as_bytes(&self) -> &'static [u8] {
+        self.as_str().as_bytes()
+    }
+}
+
+impl std::str::FromStr for Attribute {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "TRANSACTIONS" => Ok(Self::Transactions),
+            "TRANSFER_TO" => Ok(Self::TransferTo),
+            "TRANSFER_FROM" => Ok(Self::TransferFrom),
+            "PAYMENT_TO" => Ok(Self::PaymentTo),
+            "PAYMENT_FROM" => Ok(Self::PaymentFrom),
+            _ => Err(()),
+        }
+    }
+}
+
+impl std::convert::TryFrom<String> for Attribute {
+    type Error = ();
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+impl std::convert::TryFrom<&str> for Attribute {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+impl std::fmt::Display for Attribute {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
 }

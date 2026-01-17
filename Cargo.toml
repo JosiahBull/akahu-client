@@ -28,6 +28,7 @@ url = { version = "2", default-features = false, features = ["serde"] }
 [dev-dependencies]
 anyhow = { version = "1", default-features = false, features = ["std"] }
 clap = { version = "4", default-features = false, features = ["derive", "env", "std", "help", "usage", "error-context"] }
+dotenvy = "0.15.7"
 
 [package.metadata.docs.rs]
 all-features = true

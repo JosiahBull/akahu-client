@@ -142,6 +142,76 @@ pub enum TransactionKind {
     Loan,
 }
 
+impl TransactionKind {
+    /// Get the transaction kind as a string slice.
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Credit => "CREDIT",
+            Self::Debit => "DEBIT",
+            Self::Payment => "PAYMENT",
+            Self::Transfer => "TRANSFER",
+            Self::StandingOrder => "STANDING ORDER",
+            Self::Eftpos => "EFTPOS",
+            Self::Interest => "INTEREST",
+            Self::Fee => "FEE",
+            Self::Tax => "TAX",
+            Self::CreditCard => "CREDIT CARD",
+            Self::DirectDebit => "DIRECT DEBIT",
+            Self::DirectCredit => "DIRECT CREDIT",
+            Self::Atm => "ATM",
+            Self::Loan => "LOAN",
+        }
+    }
+
+    /// Get the transaction kind as bytes.
+    pub const fn as_bytes(&self) -> &'static [u8] {
+        self.as_str().as_bytes()
+    }
+}
+
+impl std::str::FromStr for TransactionKind {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "CREDIT" => Ok(Self::Credit),
+            "DEBIT" => Ok(Self::Debit),
+            "PAYMENT" => Ok(Self::Payment),
+            "TRANSFER" => Ok(Self::Transfer),
+            "STANDING ORDER" => Ok(Self::StandingOrder),
+            "EFTPOS" => Ok(Self::Eftpos),
+            "INTEREST" => Ok(Self::Interest),
+            "FEE" => Ok(Self::Fee),
+            "TAX" => Ok(Self::Tax),
+            "CREDIT CARD" => Ok(Self::CreditCard),
+            "DIRECT DEBIT" => Ok(Self::DirectDebit),
+            "DIRECT CREDIT" => Ok(Self::DirectCredit),
+            "ATM" => Ok(Self::Atm),
+            "LOAN" => Ok(Self::Loan),
+            _ => Err(()),
+        }
+    }
+}
+
+impl std::convert::TryFrom<String> for TransactionKind {
+    type Error = ();
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+impl std::convert::TryFrom<&str> for TransactionKind {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+impl std::fmt::Display for TransactionKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
 /// This is data added by the Akahu enrichment engine. You must have additional
 /// permissions to view this data.
 ///

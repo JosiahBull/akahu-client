@@ -18,6 +18,54 @@ pub enum IdentityStatus {
     Error,
 }
 
+impl IdentityStatus {
+    /// Get the status as a string slice.
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Processing => "PROCESSING",
+            Self::Complete => "COMPLETE",
+            Self::Error => "ERROR",
+        }
+    }
+
+    /// Get the status as bytes.
+    pub const fn as_bytes(&self) -> &'static [u8] {
+        self.as_str().as_bytes()
+    }
+}
+
+impl std::str::FromStr for IdentityStatus {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "PROCESSING" => Ok(Self::Processing),
+            "COMPLETE" => Ok(Self::Complete),
+            "ERROR" => Ok(Self::Error),
+            _ => Err(()),
+        }
+    }
+}
+
+impl std::convert::TryFrom<String> for IdentityStatus {
+    type Error = ();
+    fn try_from(value: String) -> Result<Self, ()> {
+        value.parse()
+    }
+}
+
+impl std::convert::TryFrom<&str> for IdentityStatus {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, ()> {
+        value.parse()
+    }
+}
+
+impl std::fmt::Display for IdentityStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
 /// Identity item containing account holder information
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Identity {
@@ -65,6 +113,54 @@ pub enum AddressKind {
     Postal,
     /// Unknown address type
     Unknown,
+}
+
+impl AddressKind {
+    /// Get the address kind as a string slice.
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Residential => "RESIDENTIAL",
+            Self::Postal => "POSTAL",
+            Self::Unknown => "UNKNOWN",
+        }
+    }
+
+    /// Get the address kind as bytes.
+    pub const fn as_bytes(&self) -> &'static [u8] {
+        self.as_str().as_bytes()
+    }
+}
+
+impl std::str::FromStr for AddressKind {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "RESIDENTIAL" => Ok(Self::Residential),
+            "POSTAL" => Ok(Self::Postal),
+            "UNKNOWN" => Ok(Self::Unknown),
+            _ => Err(()),
+        }
+    }
+}
+
+impl std::convert::TryFrom<String> for AddressKind {
+    type Error = ();
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+impl std::convert::TryFrom<&str> for AddressKind {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+impl std::fmt::Display for AddressKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
 }
 
 /// Structured address components
@@ -227,6 +323,52 @@ pub enum VerificationSourceType {
     PartyName,
 }
 
+impl VerificationSourceType {
+    /// Get the verification source type as a string slice.
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::HolderName => "HOLDER_NAME",
+            Self::PartyName => "PARTY_NAME",
+        }
+    }
+
+    /// Get the verification source type as bytes.
+    pub const fn as_bytes(&self) -> &'static [u8] {
+        self.as_str().as_bytes()
+    }
+}
+
+impl std::str::FromStr for VerificationSourceType {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "HOLDER_NAME" => Ok(Self::HolderName),
+            "PARTY_NAME" => Ok(Self::PartyName),
+            _ => Err(()),
+        }
+    }
+}
+
+impl std::convert::TryFrom<String> for VerificationSourceType {
+    type Error = ();
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+impl std::convert::TryFrom<&str> for VerificationSourceType {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+impl std::fmt::Display for VerificationSourceType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
 /// Match result from verification
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -235,6 +377,52 @@ pub enum MatchResult {
     Match,
     /// Family name matches but other supplied parameters don't
     PartialMatch,
+}
+
+impl MatchResult {
+    /// Get the match result as a string slice.
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Match => "MATCH",
+            Self::PartialMatch => "PARTIAL_MATCH",
+        }
+    }
+
+    /// Get the match result as bytes.
+    pub const fn as_bytes(&self) -> &'static [u8] {
+        self.as_str().as_bytes()
+    }
+}
+
+impl std::str::FromStr for MatchResult {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "MATCH" => Ok(Self::Match),
+            "PARTIAL_MATCH" => Ok(Self::PartialMatch),
+            _ => Err(()),
+        }
+    }
+}
+
+impl std::convert::TryFrom<String> for MatchResult {
+    type Error = ();
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+impl std::convert::TryFrom<&str> for MatchResult {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+impl std::fmt::Display for MatchResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
 }
 
 /// Boolean flags for name component verification

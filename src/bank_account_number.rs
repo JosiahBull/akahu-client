@@ -106,6 +106,11 @@ impl BankPrefix {
         }
     }
 
+    /// Get the 2-digit bank prefix as bytes.
+    pub const fn as_bytes(&self) -> &'static [u8] {
+        self.as_str().as_bytes()
+    }
+
     /// Get the common name of the bank (e.g., "ANZ", "Kiwibank").
     pub const fn bank_name(&self) -> &'static str {
         match self {
@@ -183,6 +188,26 @@ impl TryFrom<u8> for BankPrefix {
             88 => Ok(Self::BankOfChina),
             _ => Err(()),
         }
+    }
+}
+
+impl TryFrom<String> for BankPrefix {
+    type Error = ();
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::from_str(&value)
+    }
+}
+
+impl TryFrom<&str> for BankPrefix {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::from_str(value)
+    }
+}
+
+impl std::fmt::Display for BankPrefix {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
     }
 }
 
