@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{AccountId, AuthorizationId, BankAccountNumber};
+use crate::{AccountId, AuthorizationId, BankAccountNumber, ConnectionId};
 
 /// An Akahu account is something that has a balance. Some connections (like
 /// banks) have lots of accounts, while others (like KiwiSaver providers) may
@@ -71,6 +71,17 @@ pub struct Account {
     )]
     pub credentials: Option<AuthorizationId>,
 
+    /// The financial institution (or other provider) this account is held at — its
+    /// display name (e.g. "ASB"), logo, and whether it's a classic or official open
+    /// banking connection.
+    ///
+    /// Not present for every account (permissions-dependent, like the rest of this
+    /// model), so treat as optional.
+    ///
+    /// [<https://developers.akahu.nz/docs/the-account-model#connection>]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub connection: Option<ConnectionInfo>,
+
     /// This is the name of the account. If the connection allows customisation,
     /// the name will be the custom name (or nickname), e.g. "Spending Account".
     /// Otherwise Akahu falls back to the product name, e.g. "Super Saver".
@@ -116,6 +127,16 @@ pub struct Account {
     ///
     /// [<https://developers.akahu.nz/docs/the-account-model#balance>]
     pub balance: BalanceDetails,
+
+    /// A less defined part of the API exposing data specific to certain account types or
+    /// institutions — notably [`AccountMetadata::loan_details`] (interest rate, term,
+    /// initial principal, repayment schedule) for loan/mortgage/revolving-credit
+    /// accounts. Treat every field within as optional; coverage varies by institution
+    /// and integration.
+    ///
+    /// [<https://developers.akahu.nz/docs/the-account-model#meta>]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub meta: Option<AccountMetadata>,
 
     /// What sort of account this is. Akahu provides specific bank account
     /// types, and falls back to more general types for other types of
@@ -202,6 +223,53 @@ impl std::convert::TryFrom<&str> for Active {
 }
 
 impl std::fmt::Display for Active {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+/// The financial institution (or other provider) an account is held at.
+///
+/// [<https://developers.akahu.nz/docs/the-account-model#connection>]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub struct ConnectionInfo {
+    /// Unique identifier for the connection, prefixed with `conn_`.
+    #[serde(rename = "_id")]
+    pub id: ConnectionId,
+    /// The institution's display name, e.g. "ASB".
+    pub name: String,
+    /// URL to the institution's logo image, if available.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub logo: Option<String>,
+    /// Whether this connection uses Akahu's legacy screen-scraping integration or an
+    /// official open-banking API.
+    pub connection_type: ConnectionType,
+}
+
+/// Whether a [`ConnectionInfo`] uses Akahu's legacy screen-scraping integration or an
+/// official open-banking API.
+///
+/// [<https://developers.akahu.nz/docs/the-account-model#connection>]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ConnectionType {
+    /// Akahu's legacy screen-scraping integration.
+    Classic,
+    /// An official open-banking API connection.
+    Official,
+}
+
+impl ConnectionType {
+    /// Get the connection type as a string slice.
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Classic => "classic",
+            Self::Official => "official",
+        }
+    }
+}
+
+impl std::fmt::Display for ConnectionType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.as_str())
     }
@@ -595,5 +663,82 @@ impl std::convert::TryFrom<&str> for Attribute {
 impl std::fmt::Display for Attribute {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.as_str())
+    }
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    reason = "tests need to unwrap to verify correctness"
+)]
+mod tests {
+    use super::*;
+
+    /// A mortgage/loan account response shaped per
+    /// <https://developers.akahu.nz/docs/the-account-model>, including the `connection`
+    /// and `meta.loan_details` objects this crate previously didn't deserialize at all
+    /// (both were silently dropped as unknown fields).
+    #[test]
+    fn deserializes_connection_and_loan_details() {
+        let json = r#"{
+            "_id": "acc_123",
+            "_authorisation": "auth_456",
+            "connection": {
+                "_id": "conn_789",
+                "name": "ASB",
+                "logo": "https://static.akahu.io/logos/asb.png",
+                "connection_type": "official"
+            },
+            "name": "Prime Housing Lending",
+            "status": "ACTIVE",
+            "refreshed": {},
+            "balance": { "current": -553682.06, "currency": "NZD" },
+            "meta": {
+                "loan_details": {
+                    "purpose": "HOME",
+                    "type": "TABLE",
+                    "initial_principal": 560000.00,
+                    "is_interest_only": false
+                }
+            },
+            "type": "LOAN",
+            "attributes": []
+        }"#;
+        let account: Account = serde_json::from_str(json).unwrap();
+
+        let connection = account.connection.expect("connection should deserialize");
+        assert_eq!(connection.id.as_str(), "conn_789");
+        assert_eq!(connection.name, "ASB");
+        assert_eq!(connection.connection_type, ConnectionType::Official);
+
+        let loan_details = account
+            .meta
+            .expect("meta should deserialize")
+            .loan_details
+            .expect("loan_details should deserialize");
+        assert_eq!(loan_details.purpose, "HOME");
+        assert_eq!(
+            loan_details.initial_principal,
+            Some(rust_decimal::Decimal::new(56_000_000, 2))
+        );
+    }
+
+    /// Every field in `connection`/`meta` is documented as optional/permissions-gated —
+    /// an account response with neither must still deserialize (as it always has).
+    #[test]
+    fn connection_and_meta_are_optional() {
+        let json = r#"{
+            "_id": "acc_123",
+            "_authorisation": "auth_456",
+            "name": "Everyday",
+            "status": "ACTIVE",
+            "refreshed": {},
+            "balance": { "current": 100.00, "currency": "NZD" },
+            "type": "CHECKING",
+            "attributes": []
+        }"#;
+        let account: Account = serde_json::from_str(json).unwrap();
+        assert!(account.connection.is_none());
+        assert!(account.meta.is_none());
     }
 }
