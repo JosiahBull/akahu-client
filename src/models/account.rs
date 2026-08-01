@@ -109,9 +109,17 @@ pub struct Account {
     /// ****-****-****-1234
     ///
     /// [<https://developers.akahu.nz/docs/the-account-model#formatted_account>]
-    // TODO: could hyave a strongly defined type here.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub formatted_acount: Option<String>,
+    // TODO: could have a strongly defined type here.
+    //
+    // The field was previously spelled `formatted_acount`, which matched no key Akahu
+    // sends — it silently deserialised to `None` for every account. The alias keeps any
+    // caller round-tripping the old (wrong) spelling working.
+    #[serde(
+        default,
+        alias = "formatted_acount",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub formatted_account: Option<String>,
 
     /// Akahu can refresh different parts of an account's data at different rates.
     /// The timestamps in the refreshed object tell you when that account data was

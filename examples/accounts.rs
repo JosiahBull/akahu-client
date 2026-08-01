@@ -195,7 +195,7 @@ mod output {
             output.push_str(&format!("Limit:             {:.2}\n", limit));
         }
 
-        if let Some(formatted) = &account.formatted_acount {
+        if let Some(formatted) = &account.formatted_account {
             output.push_str(&format!("Account Number:    {}\n", formatted));
         }
 
