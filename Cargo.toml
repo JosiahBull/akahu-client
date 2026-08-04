@@ -1,6 +1,6 @@
 [package]
 name = "akahu-client"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 authors = ["Josiah Bull <josiah.bull7@gmail.com>"]
 description = "A non-official Rust client library for the Akahu API, providing access to financial data aggregation services in New Zealand"
@@ -29,6 +29,11 @@ url = { version = "2", default-features = false, features = ["serde"] }
 anyhow = { version = "1", default-features = false, features = ["std"] }
 clap = { version = "4", default-features = false, features = ["derive", "env", "std", "help", "usage", "error-context"] }
 dotenvy = "0.15.7"
+# `net`/`io-util` are for the response-body-ceiling tests only: they serve canned HTTP
+# responses (including one that declares no Content-Length) from a loopback listener, so the
+# ceiling is exercised through the real reqwest read path rather than a re-implementation of
+# it. Dev-only, so nothing is added to a downstream build.
+tokio = { version = "1", default-features = false, features = ["io-util", "macros", "net", "rt-multi-thread"] }
 
 [package.metadata.docs.rs]
 all-features = true

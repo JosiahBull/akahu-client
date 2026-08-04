@@ -170,9 +170,14 @@ pub struct Account {
 /// their institution, or changes their login credentials, which in some
 /// cases can cause our long-lived access to be revoked.
 ///
+/// A status this crate doesn't recognise becomes [`Self::Unknown`] rather than failing the
+/// account — see the crate-level note on
+/// [unknown values](crate#unknown-values-from-akahu).
+///
 /// [<https://developers.akahu.nz/docs/the-account-model#status>]
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "UPPERCASE")]
+#[non_exhaustive]
 pub enum Active {
     /// Akahu can authenticate with the institution to retrieve data
     /// and/or initiate payments for this account.
@@ -188,6 +193,13 @@ pub enum Active {
     /// to the Akahu OAuth flow or to [<https://my.akahu.nz/connections>] where
     /// they will be prompted to re-establish the connection.
     Inactive,
+    /// A status this crate doesn't recognise.
+    ///
+    /// Treat it as "can't tell" rather than as either of the two known states: it is not
+    /// evidence that Akahu has lost access, only that it said something new. See the
+    /// crate-level note on [unknown values](crate#unknown-values-from-akahu).
+    #[serde(other)]
+    Unknown,
 }
 
 impl Active {
@@ -196,6 +208,7 @@ impl Active {
         match self {
             Self::Active => "ACTIVE",
             Self::Inactive => "INACTIVE",
+            Self::Unknown => "UNKNOWN",
         }
     }
 
@@ -207,11 +220,14 @@ impl Active {
 
 impl std::str::FromStr for Active {
     type Err = ();
+
+    /// Parsing never fails: an unrecognised status becomes [`Self::Unknown`], matching how it
+    /// deserialises on the wire. `Err` is kept for compatibility and is never returned.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "ACTIVE" => Ok(Self::Active),
             "INACTIVE" => Ok(Self::Inactive),
-            _ => Err(()),
+            _ => Ok(Self::Unknown),
         }
     }
 }
@@ -257,14 +273,23 @@ pub struct ConnectionInfo {
 /// Whether a [`ConnectionInfo`] uses Akahu's legacy screen-scraping integration or an
 /// official open-banking API.
 ///
+/// A third kind of connection would arrive here as [`Self::Unknown`] rather than failing the
+/// account it describes — see the crate-level note on
+/// [unknown values](crate#unknown-values-from-akahu).
+///
 /// [<https://developers.akahu.nz/docs/the-account-model#connection>]
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
+#[non_exhaustive]
 pub enum ConnectionType {
     /// Akahu's legacy screen-scraping integration.
     Classic,
     /// An official open-banking API connection.
     Official,
+    /// A connection type this crate doesn't recognise. See the crate-level note on
+    /// [unknown values](crate#unknown-values-from-akahu).
+    #[serde(other)]
+    Unknown,
 }
 
 impl ConnectionType {
@@ -273,6 +298,7 @@ impl ConnectionType {
         match self {
             Self::Classic => "classic",
             Self::Official => "official",
+            Self::Unknown => "unknown",
         }
     }
 }
@@ -504,9 +530,14 @@ pub struct BalanceDetails {
 /// What sort of account this is. Akahu provides specific bank account types,
 /// and falls back to more general types for other types of connection.
 ///
+/// Akahu adds account types as it adds integrations, so one this crate hasn't heard of
+/// becomes [`Self::Unknown`] rather than failing the account listing it appeared in — see
+/// the crate-level note on [unknown values](crate#unknown-values-from-akahu).
+///
 /// [<https://developers.akahu.nz/docs/the-account-model#type>]
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "UPPERCASE")]
+#[non_exhaustive]
 pub enum BankAccountKind {
     /// An everyday spending account.
     Checking,
@@ -536,6 +567,13 @@ pub enum BankAccountKind {
     Rewards,
     /// Available cash for investment or withdrawal from an investment provider.
     Wallet,
+    /// An account type this crate doesn't recognise.
+    ///
+    /// It still has a name, a balance and a currency — everything except a type you can
+    /// branch on. See the crate-level note on
+    /// [unknown values](crate#unknown-values-from-akahu).
+    #[serde(other)]
+    Unknown,
 }
 
 impl BankAccountKind {
@@ -553,6 +591,7 @@ impl BankAccountKind {
             Self::Tax => "TAX",
             Self::Rewards => "REWARDS",
             Self::Wallet => "WALLET",
+            Self::Unknown => "UNKNOWN",
         }
     }
 
@@ -564,6 +603,9 @@ impl BankAccountKind {
 
 impl std::str::FromStr for BankAccountKind {
     type Err = ();
+
+    /// Parsing never fails: an unrecognised account type becomes [`Self::Unknown`], matching
+    /// how it deserialises on the wire. `Err` is kept for compatibility and is never returned.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "CHECKING" => Ok(Self::Checking),
@@ -577,7 +619,7 @@ impl std::str::FromStr for BankAccountKind {
             "TAX" => Ok(Self::Tax),
             "REWARDS" => Ok(Self::Rewards),
             "WALLET" => Ok(Self::Wallet),
-            _ => Err(()),
+            _ => Ok(Self::Unknown),
         }
     }
 }
@@ -604,9 +646,16 @@ impl std::fmt::Display for BankAccountKind {
 
 /// The list of attributes indicates what abilities an account has.
 ///
+/// New abilities show up here as Akahu supports them, so one this crate hasn't heard of
+/// becomes [`Self::Unknown`] rather than failing the account. Note that this is a list: an
+/// account with an unrecognised attribute keeps every recognised one alongside it, so a check
+/// like `attributes.contains(&Attribute::Transactions)` still answers correctly. See the
+/// crate-level note on [unknown values](crate#unknown-values-from-akahu).
+///
 /// [<https://developers.akahu.nz/docs/the-account-model#attributes>]
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[non_exhaustive]
 pub enum Attribute {
     /// Akahu can fetch available transactions from this account.
     Transactions,
@@ -620,6 +669,10 @@ pub enum Attribute {
     PaymentTo,
     /// This account can initiate payments to another bank account.
     PaymentFrom,
+    /// An ability this crate doesn't recognise. See the crate-level note on
+    /// [unknown values](crate#unknown-values-from-akahu).
+    #[serde(other)]
+    Unknown,
 }
 
 impl Attribute {
@@ -631,6 +684,7 @@ impl Attribute {
             Self::TransferFrom => "TRANSFER_FROM",
             Self::PaymentTo => "PAYMENT_TO",
             Self::PaymentFrom => "PAYMENT_FROM",
+            Self::Unknown => "UNKNOWN",
         }
     }
 
@@ -642,6 +696,9 @@ impl Attribute {
 
 impl std::str::FromStr for Attribute {
     type Err = ();
+
+    /// Parsing never fails: an unrecognised attribute becomes [`Self::Unknown`], matching how
+    /// it deserialises on the wire. `Err` is kept for compatibility and is never returned.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "TRANSACTIONS" => Ok(Self::Transactions),
@@ -649,7 +706,7 @@ impl std::str::FromStr for Attribute {
             "TRANSFER_FROM" => Ok(Self::TransferFrom),
             "PAYMENT_TO" => Ok(Self::PaymentTo),
             "PAYMENT_FROM" => Ok(Self::PaymentFrom),
-            _ => Err(()),
+            _ => Ok(Self::Unknown),
         }
     }
 }
@@ -729,6 +786,182 @@ mod tests {
             loan_details.initial_principal,
             Some(rust_decimal::Decimal::new(56_000_000, 2))
         );
+    }
+
+    /// One account, with `type`, `status`, `connection_type` and `attributes` substituted in.
+    fn account_json(id: &str, kind: &str, status: &str, conn: &str, attributes: &str) -> String {
+        format!(
+            r#"{{
+                "_id": "{id}",
+                "_authorisation": "auth_456",
+                "connection": {{
+                    "_id": "conn_789",
+                    "name": "ASB",
+                    "connection_type": "{conn}"
+                }},
+                "name": "Everyday",
+                "status": "{status}",
+                "refreshed": {{}},
+                "balance": {{ "current": 100.00, "currency": "NZD" }},
+                "type": "{kind}",
+                "attributes": [{attributes}]
+            }}"#
+        )
+    }
+
+    /// The account-listing equivalent of the transaction-page bug: one account of a type Akahu
+    /// added after this crate was published used to fail the entire list, taking every other
+    /// account — and both `get_accounts` and `current_balance` — down with it.
+    #[test]
+    fn an_account_list_survives_one_unrecognised_account() {
+        let json = format!(
+            r#"{{ "success": true, "items": [{}, {}] }}"#,
+            account_json(
+                "acc_1",
+                "CHECKING",
+                "ACTIVE",
+                "official",
+                "\"TRANSACTIONS\""
+            ),
+            account_json(
+                "acc_2",
+                "CARBON CREDITS",
+                "SUSPENDED",
+                "hybrid",
+                "\"TRANSACTIONS\", \"SETTLE_TO\""
+            ),
+        );
+
+        let list: crate::ListResponse<Account> = serde_json::from_str(&json).unwrap();
+        assert_eq!(list.items.len(), 2, "the whole list must survive");
+
+        let known = list.items.first().unwrap();
+        assert_eq!(known.kind, BankAccountKind::Checking);
+        assert_eq!(known.status, Active::Active);
+
+        let strange = list.items.get(1).unwrap();
+        assert_eq!(strange.kind, BankAccountKind::Unknown);
+        assert_eq!(strange.status, Active::Unknown);
+        assert_eq!(
+            strange.connection.as_ref().unwrap().connection_type,
+            ConnectionType::Unknown
+        );
+        // The recognised attribute survives alongside the unrecognised one, so a capability
+        // check still answers correctly for an account carrying a new ability.
+        assert_eq!(
+            strange.attributes,
+            vec![Attribute::Transactions, Attribute::Unknown]
+        );
+        assert!(strange.attributes.contains(&Attribute::Transactions));
+        // Nothing else about the account is lost.
+        assert_eq!(strange.name, "Everyday");
+        assert_eq!(
+            strange.balance.current,
+            rust_decimal::Decimal::new(10_000, 2)
+        );
+    }
+
+    /// `as_str`/`Display`/`FromStr`/`Serialize` have to agree about `Unknown` on each of the
+    /// account enums, and text parsing has to match the wire so a value stored as a string and
+    /// read back behaves the same way.
+    #[test]
+    fn unknown_is_consistent_across_the_account_enums() {
+        assert_eq!(BankAccountKind::Unknown.as_str(), "UNKNOWN");
+        assert_eq!(BankAccountKind::Unknown.to_string(), "UNKNOWN");
+        assert_eq!(
+            "TIMESHARE".parse::<BankAccountKind>().unwrap(),
+            BankAccountKind::Unknown
+        );
+        assert_eq!(
+            serde_json::to_string(&BankAccountKind::Unknown).unwrap(),
+            "\"UNKNOWN\""
+        );
+
+        assert_eq!(Active::Unknown.as_str(), "UNKNOWN");
+        assert_eq!("SUSPENDED".parse::<Active>().unwrap(), Active::Unknown);
+        assert_eq!(
+            serde_json::to_string(&Active::Unknown).unwrap(),
+            "\"UNKNOWN\""
+        );
+
+        assert_eq!(Attribute::Unknown.as_str(), "UNKNOWN");
+        assert_eq!(
+            "SETTLE_TO".parse::<Attribute>().unwrap(),
+            Attribute::Unknown
+        );
+        assert_eq!(
+            serde_json::to_string(&Attribute::Unknown).unwrap(),
+            "\"UNKNOWN\""
+        );
+
+        // `connection_type` is lowercase on the wire, so its catch-all is too.
+        assert_eq!(ConnectionType::Unknown.as_str(), "unknown");
+        assert_eq!(ConnectionType::Unknown.to_string(), "unknown");
+        assert_eq!(
+            serde_json::to_string(&ConnectionType::Unknown).unwrap(),
+            "\"unknown\""
+        );
+    }
+
+    /// The catch-all must not swallow the vocabulary this crate does know.
+    #[test]
+    fn known_account_types_and_statuses_still_round_trip() {
+        for kind in [
+            BankAccountKind::Checking,
+            BankAccountKind::Savings,
+            BankAccountKind::CreditCard,
+            BankAccountKind::Loan,
+            BankAccountKind::Kiwisaver,
+            BankAccountKind::Investment,
+            BankAccountKind::TermDeposit,
+            BankAccountKind::Foreign,
+            BankAccountKind::Tax,
+            BankAccountKind::Rewards,
+            BankAccountKind::Wallet,
+        ] {
+            let wire = serde_json::to_string(&kind).unwrap();
+            assert_eq!(wire, format!("\"{}\"", kind.as_str()));
+            assert_eq!(
+                serde_json::from_str::<BankAccountKind>(&wire).unwrap(),
+                kind,
+                "{kind} did not survive a round-trip"
+            );
+        }
+
+        for status in [Active::Active, Active::Inactive] {
+            let wire = serde_json::to_string(&status).unwrap();
+            assert_eq!(
+                serde_json::from_str::<Active>(&wire).unwrap(),
+                status,
+                "{status} did not survive a round-trip"
+            );
+        }
+
+        for attribute in [
+            Attribute::Transactions,
+            Attribute::TransferTo,
+            Attribute::TransferFrom,
+            Attribute::PaymentTo,
+            Attribute::PaymentFrom,
+        ] {
+            let wire = serde_json::to_string(&attribute).unwrap();
+            assert_eq!(wire, format!("\"{}\"", attribute.as_str()));
+            assert_eq!(
+                serde_json::from_str::<Attribute>(&wire).unwrap(),
+                attribute,
+                "{attribute} did not survive a round-trip"
+            );
+        }
+
+        for connection_type in [ConnectionType::Classic, ConnectionType::Official] {
+            let wire = serde_json::to_string(&connection_type).unwrap();
+            assert_eq!(wire, format!("\"{}\"", connection_type.as_str()));
+            assert_eq!(
+                serde_json::from_str::<ConnectionType>(&wire).unwrap(),
+                connection_type,
+                "{connection_type} did not survive a round-trip"
+            );
+        }
     }
 
     /// Every field in `connection`/`meta` is documented as optional/permissions-gated —

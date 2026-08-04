@@ -9,7 +9,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-akahu-client = "0.1.0"
+akahu-client = "0.3.0"
 ```
 
 ## Quick Start
@@ -42,6 +42,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+```
+
+## Unknown values from Akahu
+
+Every enum here that mirrors a set of strings Akahu chooses - a transaction `type`, an account
+`type`/`status`/`attribute`, an identity `type` - has an `Unknown` catch-all variant and is
+`#[non_exhaustive]`.
+
+This is not cosmetic. Akahu can add to those vocabularies whenever it likes, a page of results is
+deserialised as one value, and so a single value this crate had never heard of used to fail all 100
+transactions it arrived with. If your sync only advances its cursor on success, it then refetches the
+same window and fails on it again, forever, until this crate is republished. `Unknown` turns that
+into one uninteresting field.
+
+`Unknown` doesn't carry the string it stood in for - you still have the response it came from. See
+the crate docs for the full reasoning.
+
+## Response body ceiling
+
+A timeout bounds how *long* a response takes, not how many bytes it is, and the body has to be
+buffered whole before it can be deserialised. Responses are therefore capped at
+`DEFAULT_MAX_RESPONSE_BYTES` (8 MiB, about two orders of magnitude above Akahu's largest documented
+page) and rejected with `AkahuError::ResponseTooLarge`. Raise it if you need to:
+
+```rust
+use akahu_client::AkahuClient;
+
+let client = AkahuClient::new(reqwest::Client::new(), "app_token_...".to_string(), None)
+    .with_max_response_bytes(64 * 1024 * 1024);
 ```
 
 ## Validation

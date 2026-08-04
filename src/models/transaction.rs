@@ -95,8 +95,13 @@ pub struct Transaction {
 /// What sort of transaction this is. Akahu tries to find a specific transaction
 /// type, falling back to "CREDIT" or "DEBIT" if nothing else is available.
 ///
+/// Because that vocabulary is Akahu's to extend, a value this crate doesn't know becomes
+/// [`Self::Unknown`] rather than failing the page it arrived in — see the crate-level note on
+/// [unknown values](crate#unknown-values-from-akahu).
+///
 /// [<https://developers.akahu.nz/docs/the-transaction-model#type>]
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TransactionKind {
     /// Money has entered the account.
     #[serde(rename = "CREDIT")]
@@ -140,6 +145,14 @@ pub enum TransactionKind {
     /// A payment related to a loan.
     #[serde(rename = "LOAN")]
     Loan,
+    /// A type this crate doesn't recognise.
+    ///
+    /// Akahu's transaction types are documented as best-effort and can grow at any time; one
+    /// unrecognised string must not cost a whole page of transactions. See the crate-level
+    /// note on [unknown values](crate#unknown-values-from-akahu) for why this variant carries
+    /// no payload.
+    #[serde(rename = "UNKNOWN", other)]
+    Unknown,
 }
 
 impl TransactionKind {
@@ -160,6 +173,7 @@ impl TransactionKind {
             Self::DirectCredit => "DIRECT CREDIT",
             Self::Atm => "ATM",
             Self::Loan => "LOAN",
+            Self::Unknown => "UNKNOWN",
         }
     }
 
@@ -171,6 +185,11 @@ impl TransactionKind {
 
 impl std::str::FromStr for TransactionKind {
     type Err = ();
+
+    /// Parsing never fails: a string this crate doesn't recognise becomes
+    /// [`Self::Unknown`], which is exactly what an unrecognised `"type"` deserialises to
+    /// on the wire. `Err` is kept for compatibility with the crate's other conversions and
+    /// is never returned.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "CREDIT" => Ok(Self::Credit),
@@ -187,7 +206,7 @@ impl std::str::FromStr for TransactionKind {
             "DIRECT CREDIT" => Ok(Self::DirectCredit),
             "ATM" => Ok(Self::Atm),
             "LOAN" => Ok(Self::Loan),
-            _ => Err(()),
+            _ => Ok(Self::Unknown),
         }
     }
 }
@@ -366,4 +385,138 @@ pub struct PendingTransaction {
     /// Additional metadata about the transaction.
     #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
     pub meta: Option<TransactionMeta>,
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    reason = "tests need to unwrap to verify correctness"
+)]
+mod tests {
+    use super::*;
+    use crate::PaginatedResponse;
+
+    /// One transaction, with `type` substituted in. Everything else is the minimum a
+    /// `Transaction` needs.
+    fn transaction_json(id: &str, kind: &str) -> String {
+        format!(
+            r#"{{
+                "_id": "{id}",
+                "_account": "acc_123",
+                "_connection": "conn_1",
+                "created_at": "2026-01-06T10:00:00.000Z",
+                "date": "2026-01-06T09:30:00.000Z",
+                "description": "Salary",
+                "amount": 2500.00,
+                "type": "{kind}"
+            }}"#
+        )
+    }
+
+    /// **The bug this release exists for.** A page is deserialised as one value, so before
+    /// `Unknown` existed a single `type` Akahu had added since this crate was published failed
+    /// all 100 transactions on the page — and a caller that only advances its sync cursor on
+    /// success would refetch that same window forever, importing nothing.
+    #[test]
+    fn a_page_survives_one_unrecognised_transaction_type() {
+        let json = format!(
+            r#"{{
+                "success": true,
+                "items": [{}, {}, {}],
+                "cursor": {{ "next": null }}
+            }}"#,
+            transaction_json("trans_1", "CREDIT"),
+            transaction_json("trans_2", "CRYPTO SETTLEMENT"),
+            transaction_json("trans_3", "DEBIT"),
+        );
+
+        let page: PaginatedResponse<Transaction> = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(page.items.len(), 3, "the whole page must survive");
+        assert_eq!(page.items.first().unwrap().kind, TransactionKind::Credit);
+        assert_eq!(page.items.get(1).unwrap().kind, TransactionKind::Unknown);
+        // The unrecognised item keeps every other field — only the type is lost.
+        assert_eq!(
+            page.items.get(1).unwrap().amount,
+            rust_decimal::Decimal::new(250_000, 2)
+        );
+        assert_eq!(page.items.get(1).unwrap().description, "Salary");
+        assert_eq!(page.items.get(2).unwrap().kind, TransactionKind::Debit);
+    }
+
+    #[test]
+    fn an_unrecognised_type_deserialises_to_unknown() {
+        let txn: Transaction =
+            serde_json::from_str(&transaction_json("trans_1", "SOMETHING NEW")).unwrap();
+        assert_eq!(txn.kind, TransactionKind::Unknown);
+    }
+
+    /// A pending transaction carries the same `type` field, from the same vocabulary, and so
+    /// has the same exposure.
+    #[test]
+    fn an_unrecognised_pending_type_deserialises_to_unknown() {
+        let json = r#"{
+            "_account": "acc_123",
+            "_connection": "conn_1",
+            "updated_at": "2026-01-06T10:00:00.000Z",
+            "date": "2026-01-06T09:30:00.000Z",
+            "description": "Pending",
+            "amount": -1.00,
+            "type": "SOMETHING NEW"
+        }"#;
+        let txn: PendingTransaction = serde_json::from_str(json).unwrap();
+        assert_eq!(txn.kind, TransactionKind::Unknown);
+    }
+
+    /// Every known type still parses to its own variant — the catch-all must not be a black
+    /// hole that swallows the vocabulary this crate does know.
+    #[test]
+    fn known_types_still_round_trip() {
+        for kind in [
+            TransactionKind::Credit,
+            TransactionKind::Debit,
+            TransactionKind::Payment,
+            TransactionKind::Transfer,
+            TransactionKind::StandingOrder,
+            TransactionKind::Eftpos,
+            TransactionKind::Interest,
+            TransactionKind::Fee,
+            TransactionKind::Tax,
+            TransactionKind::CreditCard,
+            TransactionKind::DirectDebit,
+            TransactionKind::DirectCredit,
+            TransactionKind::Atm,
+            TransactionKind::Loan,
+        ] {
+            let wire = serde_json::to_string(&kind).unwrap();
+            assert_eq!(wire, format!("\"{}\"", kind.as_str()));
+            assert_eq!(
+                serde_json::from_str::<TransactionKind>(&wire).unwrap(),
+                kind,
+                "{kind} did not survive a round-trip"
+            );
+        }
+    }
+
+    /// `as_str`, `Display`, `FromStr` and `Serialize` all have to agree about `Unknown`, and
+    /// parsing text has to behave the way the wire does — a value read back out of a database
+    /// column shouldn't fail where the same value from Akahu succeeded.
+    #[test]
+    fn unknown_is_consistent_across_the_conversions() {
+        assert_eq!(TransactionKind::Unknown.as_str(), "UNKNOWN");
+        assert_eq!(TransactionKind::Unknown.to_string(), "UNKNOWN");
+        assert_eq!(
+            "WHAT IS THIS".parse::<TransactionKind>().unwrap(),
+            TransactionKind::Unknown
+        );
+        assert_eq!(
+            "UNKNOWN".parse::<TransactionKind>().unwrap(),
+            TransactionKind::Unknown
+        );
+        // Serialising says "we lost it" rather than inventing a plausible type.
+        assert_eq!(
+            serde_json::to_string(&TransactionKind::Unknown).unwrap(),
+            "\"UNKNOWN\""
+        );
+    }
 }

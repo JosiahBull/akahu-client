@@ -7,8 +7,12 @@ use serde::{Deserialize, Serialize};
 use crate::{BankAccountNumber, ConnectionId, space_separated_strings_as_vec};
 
 /// Status of an identity verification
+///
+/// A status this crate doesn't recognise becomes [`Self::Unknown`] rather than failing the
+/// response — see the crate-level note on [unknown values](crate#unknown-values-from-akahu).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[non_exhaustive]
 pub enum IdentityStatus {
     /// Identity verification is still being processed
     Processing,
@@ -16,6 +20,13 @@ pub enum IdentityStatus {
     Complete,
     /// Identity verification encountered an error
     Error,
+    /// A status this crate doesn't recognise.
+    ///
+    /// Not the same as [`Self::Error`] — the verification may well have succeeded; only the
+    /// word Akahu used for it is new. See the crate-level note on
+    /// [unknown values](crate#unknown-values-from-akahu).
+    #[serde(other)]
+    Unknown,
 }
 
 impl IdentityStatus {
@@ -25,6 +36,7 @@ impl IdentityStatus {
             Self::Processing => "PROCESSING",
             Self::Complete => "COMPLETE",
             Self::Error => "ERROR",
+            Self::Unknown => "UNKNOWN",
         }
     }
 
@@ -36,12 +48,15 @@ impl IdentityStatus {
 
 impl std::str::FromStr for IdentityStatus {
     type Err = ();
+
+    /// Parsing never fails: an unrecognised status becomes [`Self::Unknown`], matching how it
+    /// deserialises on the wire. `Err` is kept for compatibility and is never returned.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "PROCESSING" => Ok(Self::Processing),
             "COMPLETE" => Ok(Self::Complete),
             "ERROR" => Ok(Self::Error),
-            _ => Err(()),
+            _ => Ok(Self::Unknown),
         }
     }
 }
@@ -104,14 +119,22 @@ pub struct Address {
 }
 
 /// Type of address
+///
+/// Akahu already documents an `UNKNOWN` address type, so [`Self::Unknown`] does double duty
+/// here: it is both that value and the catch-all for an address type this crate doesn't
+/// recognise. See the crate-level note on
+/// [unknown values](crate#unknown-values-from-akahu).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[non_exhaustive]
 pub enum AddressKind {
     /// Residential address
     Residential,
     /// Postal address
     Postal,
-    /// Unknown address type
+    /// Akahu's own `UNKNOWN` address type, and any address type this crate doesn't
+    /// recognise — the two are indistinguishable here, and mean the same thing to a caller.
+    #[serde(other)]
     Unknown,
 }
 
@@ -133,12 +156,14 @@ impl AddressKind {
 
 impl std::str::FromStr for AddressKind {
     type Err = ();
+
+    /// Parsing never fails: an unrecognised address type becomes [`Self::Unknown`], matching
+    /// how it deserialises on the wire. `Err` is kept for compatibility and is never returned.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "RESIDENTIAL" => Ok(Self::Residential),
             "POSTAL" => Ok(Self::Postal),
-            "UNKNOWN" => Ok(Self::Unknown),
-            _ => Err(()),
+            _ => Ok(Self::Unknown),
         }
     }
 }
@@ -314,13 +339,21 @@ pub struct VerificationSource {
 }
 
 /// Type of verification source
+///
+/// A source this crate doesn't recognise becomes [`Self::Unknown`] rather than failing the
+/// response — see the crate-level note on [unknown values](crate#unknown-values-from-akahu).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[non_exhaustive]
 pub enum VerificationSourceType {
     /// Bank account holder name
     HolderName,
     /// Party name from financial institution
     PartyName,
+    /// A verification source this crate doesn't recognise. See the crate-level note on
+    /// [unknown values](crate#unknown-values-from-akahu).
+    #[serde(other)]
+    Unknown,
 }
 
 impl VerificationSourceType {
@@ -329,6 +362,7 @@ impl VerificationSourceType {
         match self {
             Self::HolderName => "HOLDER_NAME",
             Self::PartyName => "PARTY_NAME",
+            Self::Unknown => "UNKNOWN",
         }
     }
 
@@ -340,11 +374,14 @@ impl VerificationSourceType {
 
 impl std::str::FromStr for VerificationSourceType {
     type Err = ();
+
+    /// Parsing never fails: an unrecognised source becomes [`Self::Unknown`], matching how it
+    /// deserialises on the wire. `Err` is kept for compatibility and is never returned.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "HOLDER_NAME" => Ok(Self::HolderName),
             "PARTY_NAME" => Ok(Self::PartyName),
-            _ => Err(()),
+            _ => Ok(Self::Unknown),
         }
     }
 }
@@ -370,13 +407,23 @@ impl std::fmt::Display for VerificationSourceType {
 }
 
 /// Match result from verification
+///
+/// A result this crate doesn't recognise becomes [`Self::Unknown`] rather than failing the
+/// response. Note the direction that fails in: an unrecognised result is not
+/// [`Self::Match`], so a caller gating on a match still gates closed. See the crate-level
+/// note on [unknown values](crate#unknown-values-from-akahu).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[non_exhaustive]
 pub enum MatchResult {
     /// All supplied parameters match the verification source
     Match,
     /// Family name matches but other supplied parameters don't
     PartialMatch,
+    /// A match result this crate doesn't recognise. **Not** evidence of a match — see the
+    /// note on the enum itself.
+    #[serde(other)]
+    Unknown,
 }
 
 impl MatchResult {
@@ -385,6 +432,7 @@ impl MatchResult {
         match self {
             Self::Match => "MATCH",
             Self::PartialMatch => "PARTIAL_MATCH",
+            Self::Unknown => "UNKNOWN",
         }
     }
 
@@ -396,11 +444,14 @@ impl MatchResult {
 
 impl std::str::FromStr for MatchResult {
     type Err = ();
+
+    /// Parsing never fails: an unrecognised result becomes [`Self::Unknown`], matching how it
+    /// deserialises on the wire. `Err` is kept for compatibility and is never returned.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "MATCH" => Ok(Self::Match),
             "PARTIAL_MATCH" => Ok(Self::PartialMatch),
-            _ => Err(()),
+            _ => Ok(Self::Unknown),
         }
     }
 }
@@ -481,4 +532,147 @@ pub struct Party {
     /// Additional metadata
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub meta: Option<serde_json::Value>,
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    reason = "tests need to unwrap to verify correctness"
+)]
+mod tests {
+    use super::*;
+
+    /// The identity endpoints carry the same exposure as accounts and transactions: their
+    /// enums are Akahu's vocabulary, and a verification response is deserialised whole.
+    #[test]
+    fn a_verification_response_survives_unrecognised_enum_values() {
+        let json = r#"{
+            "success": true,
+            "item": {
+                "sources": [
+                    {
+                        "type": "IRD_NAME",
+                        "meta": {},
+                        "match_result": "FUZZY_MATCH"
+                    },
+                    {
+                        "type": "HOLDER_NAME",
+                        "meta": {},
+                        "match_result": "MATCH"
+                    }
+                ],
+                "name": { "family_name": "Bull" }
+            }
+        }"#;
+
+        let response: VerifyNameResponse = serde_json::from_str(json).unwrap();
+        let sources = response.item.sources;
+        assert_eq!(sources.len(), 2, "the whole response must survive");
+
+        let strange = sources.first().unwrap();
+        assert_eq!(strange.source_type, VerificationSourceType::Unknown);
+        // An unrecognised result must not read as a match — it fails closed.
+        assert_eq!(strange.match_result, Some(MatchResult::Unknown));
+        assert_ne!(strange.match_result, Some(MatchResult::Match));
+
+        let known = sources.get(1).unwrap();
+        assert_eq!(known.source_type, VerificationSourceType::HolderName);
+        assert_eq!(known.match_result, Some(MatchResult::Match));
+    }
+
+    /// `AddressKind` already had an `Unknown` variant for Akahu's own `UNKNOWN` value; it now
+    /// doubles as the catch-all, so both spellings land in the same place.
+    #[test]
+    fn an_unrecognised_address_type_joins_akahus_own_unknown() {
+        let address = |kind: &str| -> Address {
+            serde_json::from_str(&format!(r#"{{ "type": "{kind}", "value": "1 Queen St" }}"#))
+                .unwrap()
+        };
+        assert_eq!(address("UNKNOWN").kind, AddressKind::Unknown);
+        assert_eq!(address("BUSINESS").kind, AddressKind::Unknown);
+        assert_eq!(address("RESIDENTIAL").kind, AddressKind::Residential);
+    }
+
+    #[test]
+    fn an_unrecognised_identity_status_deserialises_to_unknown() {
+        assert_eq!(
+            serde_json::from_str::<IdentityStatus>("\"QUEUED\"").unwrap(),
+            IdentityStatus::Unknown
+        );
+        // Not conflated with the ERROR status: the verification may well have worked.
+        assert_ne!(
+            serde_json::from_str::<IdentityStatus>("\"QUEUED\"").unwrap(),
+            IdentityStatus::Error
+        );
+    }
+
+    /// `as_str`/`FromStr`/`Serialize` have to agree about `Unknown`, and the known values must
+    /// still round-trip rather than being swallowed by the catch-all.
+    #[test]
+    fn unknown_is_consistent_across_the_identity_enums() {
+        assert_eq!(IdentityStatus::Unknown.as_str(), "UNKNOWN");
+        assert_eq!(
+            "QUEUED".parse::<IdentityStatus>().unwrap(),
+            IdentityStatus::Unknown
+        );
+        assert_eq!(AddressKind::Unknown.as_str(), "UNKNOWN");
+        assert_eq!(
+            "BUSINESS".parse::<AddressKind>().unwrap(),
+            AddressKind::Unknown
+        );
+        assert_eq!(VerificationSourceType::Unknown.as_str(), "UNKNOWN");
+        assert_eq!(
+            "IRD_NAME".parse::<VerificationSourceType>().unwrap(),
+            VerificationSourceType::Unknown
+        );
+        assert_eq!(MatchResult::Unknown.as_str(), "UNKNOWN");
+        assert_eq!(
+            "FUZZY_MATCH".parse::<MatchResult>().unwrap(),
+            MatchResult::Unknown
+        );
+
+        for status in [
+            IdentityStatus::Processing,
+            IdentityStatus::Complete,
+            IdentityStatus::Error,
+        ] {
+            let wire = serde_json::to_string(&status).unwrap();
+            assert_eq!(wire, format!("\"{}\"", status.as_str()));
+            assert_eq!(
+                serde_json::from_str::<IdentityStatus>(&wire).unwrap(),
+                status,
+                "{status} did not survive a round-trip"
+            );
+        }
+        for kind in [AddressKind::Residential, AddressKind::Postal] {
+            let wire = serde_json::to_string(&kind).unwrap();
+            assert_eq!(wire, format!("\"{}\"", kind.as_str()));
+            assert_eq!(
+                serde_json::from_str::<AddressKind>(&wire).unwrap(),
+                kind,
+                "{kind} did not survive a round-trip"
+            );
+        }
+        for source in [
+            VerificationSourceType::HolderName,
+            VerificationSourceType::PartyName,
+        ] {
+            let wire = serde_json::to_string(&source).unwrap();
+            assert_eq!(wire, format!("\"{}\"", source.as_str()));
+            assert_eq!(
+                serde_json::from_str::<VerificationSourceType>(&wire).unwrap(),
+                source,
+                "{source} did not survive a round-trip"
+            );
+        }
+        for result in [MatchResult::Match, MatchResult::PartialMatch] {
+            let wire = serde_json::to_string(&result).unwrap();
+            assert_eq!(wire, format!("\"{}\"", result.as_str()));
+            assert_eq!(
+                serde_json::from_str::<MatchResult>(&wire).unwrap(),
+                result,
+                "{result} did not survive a round-trip"
+            );
+        }
+    }
 }
